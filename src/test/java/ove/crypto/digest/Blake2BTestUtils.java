@@ -27,9 +27,27 @@ import java.io.FileInputStream;
 
 /** TODO document me */
 public class Blake2BTestUtils {
+
+	static public final byte[] nilsalt 		= new byte[ Blake2b.Spec.max_salt_bytes ];
+	static public final byte[] nilpersonal 	= new byte[ Blake2b.Spec.max_personalization_bytes ];
+
 	public static final File referenceDataDir = new File("src/test/resources/reference-impl");
 	public static final String blake2b_kat = "blake2b-kat.out";
 	public static final String blake2b_key_kat = "blake2b-key-kat.out";
+
+	public static Blake2b.Param newDefaultParam() {
+		final Blake2b.Param config = new Blake2b.Param();
+		config.
+				setDigestLength( Blake2b.Param.Default.digest_length ).
+				setFanout( Blake2b.Param.Default.fanout ).
+				setDepth( Blake2b.Param.Default.fanout ).
+				setLeafLength( Blake2b.Param.Default.leaf_length ).
+				setNodeOffset( Blake2b.Param.Default.node_offset ).
+				setInnerLength(Blake2b.Param.Default.inner_length).
+				setSalt( Blake2BTestUtils.nilsalt ).
+				setPersonal( Blake2BTestUtils.nilpersonal );
+		return config;
+	}
 
 	public static byte[] loadKATData (final String fname) {
 		byte[] refbytes = null;

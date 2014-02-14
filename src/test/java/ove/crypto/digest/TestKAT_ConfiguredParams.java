@@ -28,20 +28,21 @@ public class TestKAT_ConfiguredParams extends TestKAT {
 
 		final byte[] refbytes = Param.default_bytes;
 
-		final byte[] nilsalt 		= new byte[ Spec.max_salt_bytes ];
-		final byte[] nilpersonal 	= new byte[ Spec.max_personalization_bytes ];
+//		final byte[] nilsalt 		= new byte[ Spec.max_salt_bytes ];
+//		final byte[] nilpersonal 	= new byte[ Spec.max_personalization_bytes ];
 
-		final Blake2b.Param config = new Blake2b.Param();
-		config.
-				setDigestLength( Default.digest_length ).
-				setFanout( Default.fanout ).
-				setDepth( Default.fanout ).
-				setLeafLength( Default.leaf_length ).
-				setNodeOffset( Default.node_offset ).
-				setInnerLength(Default.inner_length).
-				setSalt( nilsalt ).
-				setPersonal( nilpersonal );
+//		final Blake2b.Param config = new Blake2b.Param();
+//		config.
+//				setDigestLength( Default.digest_length ).
+//				setFanout( Default.fanout ).
+//				setDepth( Default.fanout ).
+//				setLeafLength( Default.leaf_length ).
+//				setNodeOffset( Default.node_offset ).
+//				setInnerLength(Default.inner_length).
+//				setSalt( Blake2BTestUtils.nilsalt ).
+//				setPersonal( Blake2BTestUtils.nilpersonal );
 
+		final Blake2b.Param config = Blake2BTestUtils.newDefaultParam();
 		final byte[] confbytes = config.getBytes();
 
 		return Blake2b.Digest.newInstance (config);

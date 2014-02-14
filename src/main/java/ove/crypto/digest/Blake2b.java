@@ -195,7 +195,7 @@ public interface Blake2b {
 			this.param = param;
 		}
 		/**
-		 * instantiate a new Blake2b Tree (incremental) digest
+		 * instantiate a new Blake2b Tree (incremental) digest.
 		 * @param fanout
 		 * @param depth
 		 * @param leaf_length
@@ -220,7 +220,6 @@ public interface Blake2b {
 
 			Node node10 = tree.getLastNode(1, 0);
 			final byte[] h10 = node10.digest(new byte[4096]);
-
 
 		}
 	}
@@ -986,7 +985,9 @@ public interface Blake2b {
 		public final boolean hasKey() { return this.hasKey; }
 
 		@Override public Param clone() {
-			return this.clone();
+			final Param clone = new Param();
+			System.arraycopy(this.h, 0, clone.h, 0, h.length);
+			return clone;
 		}
 		////////////////////////////////////////////////////////////////////////
 		/// lazy setters - write directly to the bytes image of param block ////
