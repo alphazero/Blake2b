@@ -38,7 +38,7 @@ public class TestKAT_ConfiguredParams extends TestKAT {
 				setDepth( Default.fanout ).
 				setLeafLength( Default.leaf_length ).
 				setNodeOffset( Default.node_offset ).
-				setInnerDepth( Default.inner_depth ).
+				setInnerLength(Default.inner_length).
 				setSalt( nilsalt ).
 				setPersonal( nilpersonal );
 

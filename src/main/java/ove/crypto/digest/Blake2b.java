@@ -163,7 +163,11 @@ public interface Blake2b {
 	// ---------------------------------------------------------------------
 	// Blake2b Incremental Message Digest (Tree)
 	// ---------------------------------------------------------------------
-	public static class Tree { /* TODO */ }
+	public static class Tree extends Engine {
+		private Tree () {
+//			super (p);
+		}
+	}
 
 	// ---------------------------------------------------------------------
 	// Engine
@@ -831,7 +835,7 @@ public interface Blake2b {
 	// digest parameter (block)
 	// ---------------------------------------------------------------------
 	/** Blake2b configuration parameters block per spec */
-	public static final class Param implements AlgorithmParameterSpec {
+	public static class Param implements AlgorithmParameterSpec {
 		interface Xoff {
 			int digest_length   = 0;
 			int key_length      = 1;
@@ -846,14 +850,14 @@ public interface Blake2b {
 			int personal        = 48;
 		}
 		public interface Default {
-			byte 	digest_length   = Spec.max_digest_bytes;
-			byte 	key_length      = 0;
-			byte 	fanout          = 1;
-			byte 	depth           = 1;
-			int		leaf_length     = 0;
-			long 	node_offset     = 0;
-			byte 	node_depth      = 0;
-			byte 	inner_depth     = 0;
+			byte    digest_length   = Spec.max_digest_bytes;
+			byte    key_length      = 0;
+			byte    fanout          = 1;
+			byte    depth           = 1;
+			int     leaf_length     = 0;
+			long    node_offset     = 0;
+			byte    node_depth      = 0;
+			byte    inner_length    = 0;
 		}
 		/** default bytes of Blake2b parameter block */
 		final static byte[] default_bytes = new byte[ Spec.param_bytes ];
@@ -866,7 +870,7 @@ public interface Blake2b {
 			/* def. leaf_length is 0 fill and already set by new byte[] */
 			/* def. node_offset is 0 fill and already set by new byte[] */
 			default_bytes [ Xoff.node_depth ] = Default.node_depth;
-			default_bytes [ Xoff.inner_depth ] = Default.inner_depth;
+			default_bytes [ Xoff.inner_depth ] = Default.inner_length;
 			/* def. salt is 0 fill and already set by new byte[] */
 			/* def. personal is 0 fill and already set by new byte[] */
 		}
@@ -1015,11 +1019,11 @@ public interface Blake2b {
 			h[ 2 ] ^= Spec.IV [ 2 ];
 			return this;
 		}
-		public final Param setInnerDepth(int inner_depth) {
-			assert inner_depth >= 0 : assertFail("inner_depth", inner_depth, inclusiveLowerBound, 0);
+		public final Param setInnerLength(int inner_length) {
+			assert inner_length >= 0 : assertFail("inner_length", inner_length, inclusiveLowerBound, 0);
 
 			lazyInitBytes();
-			bytes[ Xoff.inner_depth ] = (byte) inner_depth;
+			bytes[ Xoff.inner_depth ] = (byte) inner_length;
 			h[ 3 ] = readLong( bytes, Xoff.inner_depth );
 			h[ 3 ] ^= Spec.IV [ 3 ];
 			return this;
@@ -1059,5 +1063,39 @@ public interface Blake2b {
 		////////////////////////////////////////////////////////////////////////
 		/// lazy setters /////////////////////////////////////////////////// END
 		////////////////////////////////////////////////////////////////////////
+	}
+	public static final class NodeParam extends Param {
+		public NodeParam (
+			final int     fanout,
+			final int     depth,
+			final int     leaf_length,
+			final int     inner_length,
+			/* node specific params */
+			final long    node_offset,
+			final int     node_depth
+		) {
+			this (fanout, depth, leaf_length, inner_length, node_offset, node_depth, false);
+		}
+
+		public NodeParam (
+			/* generic tree params */
+			final int     fanout,
+			final int     depth,
+			final int     leaf_length,
+			final int     inner_length,
+			/* node specific params */
+			final long    node_offset,
+			final int     node_depth,
+			final boolean last_node
+		) {
+			super();
+			this.
+				setFanout      (fanout).
+				setDepth       (depth).
+				setLeafLength  (leaf_length).
+				setNodeOffset  (node_offset).
+				setNodeDepth   (node_depth).
+				setInnerLength (inner_length);
+		}
 	}
 }
