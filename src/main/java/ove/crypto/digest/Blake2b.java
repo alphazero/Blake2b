@@ -163,9 +163,65 @@ public interface Blake2b {
 	// ---------------------------------------------------------------------
 	// Blake2b Incremental Message Digest (Tree)
 	// ---------------------------------------------------------------------
-	public static class Tree extends Engine {
-		private Tree () {
-//			super (p);
+	public static class Tree {
+		static final class Param extends Blake2b.Param {
+			Param (
+				final int     fanout,
+				final int     depth,
+				final int     leaf_length,
+				final int     inner_length
+			) {
+				super();
+				this.
+					setFanout(fanout).
+					setDepth(depth).
+					setLeafLength(leaf_length).
+					setInnerLength(inner_length);
+			}
+		}
+		public final class Node extends Engine {
+			Node (final int offset, final int depth, final boolean isLast) {
+				super(((Tree.Param)Tree.this.param.clone()).setNodeOffset(0).setNodeDepth(0));
+			}
+		}
+		public final Node getLastNode (int offset, int depth) {
+			return this.new Node (offset, depth, true);
+		}
+		public final Node getNode (int offset, int depth) {
+			return this.new Node (offset, depth, false);
+		}
+		private final Tree.Param param;
+		private Tree (final Tree.Param param) {
+			this.param = param;
+		}
+		/**
+		 * instantiate a new Blake2b Tree (incremental) digest
+		 * @param fanout
+		 * @param depth
+		 * @param leaf_length
+		 * @param inner_length
+		 * @return
+		 */
+		public static Tree newInstance (
+			final int     fanout,
+			final int     depth,
+			final int     leaf_length,
+			final int     inner_length
+		) {
+			final Tree.Param treeParam = new Tree.Param (fanout, depth, leaf_length, inner_length);
+			return new Tree (treeParam);
+		}
+
+		public static void main(String... args) {
+			Blake2b.Tree tree = Blake2b.Tree.newInstance(2, 2, 4096, 64);
+
+			Node node00 = tree.getNode(0, 0);
+			final byte[] h00 = node00.digest(new byte[4096]);
+
+			Node node10 = tree.getLastNode(1, 0);
+			final byte[] h10 = node10.digest(new byte[4096]);
+
+
 		}
 	}
 
@@ -928,6 +984,10 @@ public interface Blake2b {
 		}
 
 		public final boolean hasKey() { return this.hasKey; }
+
+		@Override public Param clone() {
+			return this.clone();
+		}
 		////////////////////////////////////////////////////////////////////////
 		/// lazy setters - write directly to the bytes image of param block ////
 		////////////////////////////////////////////////////////////////////////
