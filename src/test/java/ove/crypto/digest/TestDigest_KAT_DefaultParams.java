@@ -19,9 +19,17 @@
 
 package ove.crypto.digest;
 
+import static ove.crypto.digest.Blake2b.*;
+
 /** TODO document me */
-public class TestKeyKAT_DefaultParams extends TestKeyKAT{
-	@Override protected Blake2b newMessageDigest() {
-		return Blake2b.Mac.newInstance ( getTestKeyBytes() );
+public class TestDigest_KAT_DefaultParams extends TestDigestAbstractBase {
+	@Override final protected Blake2b newMessageDigest() {
+
+		final byte[] refbytes = Param.default_bytes;
+
+		final Blake2b.Param config = Blake2BTestUtils.newDefaultParam();
+		final byte[] confbytes = config.getBytes();
+
+		return Blake2b.Digest.newInstance (config);
 	}
 }

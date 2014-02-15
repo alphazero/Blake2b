@@ -25,6 +25,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 
+// REVU: let's keep the jar minimal. (TODO) move to a child project.
 public class Bench implements Runnable {
 
 	interface Default {

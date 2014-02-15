@@ -20,7 +20,7 @@
 package ove.crypto.digest;
 
 /** TODO document me */
-public class TestKAT_ImplicitDefaultParams extends TestKAT {
+public class TestDigest_KAT_ImplicitDefaultParams extends TestDigestAbstractBase {
 
 	/** create a Blake2b digest using explicit default params */
 	@Override final protected Blake2b newMessageDigest() {

@@ -53,7 +53,24 @@ public interface Blake2b {
 		int max_personalization_bytes = 16;
 
 		/** length of h space vector array */
-		int state_space_len = 8;
+		int state_space_len 		= 8;
+
+		/** max tree fanout value */
+		int max_tree_fantout 		= 0xFF;
+
+		/** max tree depth value */
+		int max_tree_depth 			= 0xFF;
+
+		/** max tree leaf length value.Note that this has uint32 semantics
+		 and thus 0xFFFFFFFF is used as max value limit. */
+		int max_tree_leaf_length 	= 0xFFFFFFFF;
+
+		/** max node offset value. Note that this has uint64 semantics
+		    and thus 0xFFFFFFFFFFFFFFFFL is used as max value limit. */
+		long max_node_offset 		= 0xFFFFFFFFFFFFFFFFL;
+
+		/** max tree inner length value */
+		int max_tree_inner_length 	= 0xFF;
 
 		/** initialization values map ref-Spec IV[i] -> slice iv[i*8:i*8+7] */
 		long[] IV = {
@@ -126,7 +143,7 @@ public interface Blake2b {
 			return new Digest (new Param().setDigestLength(digestLength));
 		}
 		public static Digest newInstance (Param p) {
-			return new Digest (new Param());
+			return new Digest (p);
 		}
 	}
 
@@ -156,71 +173,64 @@ public interface Blake2b {
 		public static Mac newInstance (Param p) {
 			assert p != null : "Param (p) is null";
 			assert p.hasKey() : "Param (p) not configured with a key";
-			return new Mac (new Param());
+			return new Mac (p);
 		}
 	}
 
 	// ---------------------------------------------------------------------
 	// Blake2b Incremental Message Digest (Tree)
 	// ---------------------------------------------------------------------
+
+	/**
+	 *  Note that Tree is just a convenience class; incremental hash (tree)
+	 *  can be done directly with the Digest class.
+	 *  <br>
+	 *  Further node, that tree does NOT accumulate the leaf hashes --
+	 *  you need to do that
+	 */
 	public static class Tree {
-		static final class Param extends Blake2b.Param {
-			Param (
-				final int     fanout,
-				final int     depth,
-				final int     leaf_length,
-				final int     inner_length
-			) {
-				super();
-				this.
-					setFanout(fanout).
-					setDepth(depth).
-					setLeafLength(leaf_length).
-					setInnerLength(inner_length);
-			}
-		}
-		public final class Node extends Engine {
-			Node (final int offset, final int depth, final boolean isLast) {
-				super(((Tree.Param)Tree.this.param.clone()).setNodeOffset(0).setNodeDepth(0));
-			}
-		}
-		public final Node getLastNode (int offset, int depth) {
-			return this.new Node (offset, depth, true);
-		}
-		public final Node getNode (int offset, int depth) {
-			return this.new Node (offset, depth, false);
-		}
-		private final Tree.Param param;
-		private Tree (final Tree.Param param) {
-			this.param = param;
-		}
+
+		final int     depth;
+		final int     fanout;
+		final int     leaf_length;
+		final int     inner_length;
+		final int     digest_length;
+
 		/**
-		 * instantiate a new Blake2b Tree (incremental) digest.
+		 *
 		 * @param fanout
 		 * @param depth
-		 * @param leaf_length
-		 * @param inner_length
-		 * @return
+		 * @param leaf_length size of data input for leaf nodes.
+		 * @param inner_length note this is used also as digest-length for non-root nodes.
+		 * @param digest_length final hash out digest-length for the tree
 		 */
-		public static Tree newInstance (
-			final int     fanout,
+		public Tree  (
 			final int     depth,
+			final int     fanout,
 			final int     leaf_length,
-			final int     inner_length
+			final int     inner_length,
+			final int     digest_length
 		) {
-			final Tree.Param treeParam = new Tree.Param (fanout, depth, leaf_length, inner_length);
-			return new Tree (treeParam);
+			this.fanout = fanout;
+			this.depth = depth;
+			this.leaf_length = leaf_length;
+			this.inner_length = inner_length;
+			this.digest_length = digest_length;
 		}
-
-		public static void main(String... args) {
-			Blake2b.Tree tree = Blake2b.Tree.newInstance(2, 2, 4096, 64);
-
-			Node node00 = tree.getNode(0, 0);
-			final byte[] h00 = node00.digest(new byte[4096]);
-
-			Node node10 = tree.getLastNode(1, 0);
-			final byte[] h10 = node10.digest(new byte[4096]);
-
+		private Param treeParam() {
+			return new Param().
+				setDepth(depth).setFanout(fanout).setLeafLength(leaf_length).setInnerLength(inner_length);
+		}
+		/** returns the Digest for tree node @ (depth, offset) */
+		public final Digest getNode (final int depth, final int offset) {
+			final Param nodeParam = treeParam().setNodeDepth(depth).setNodeOffset(offset).setDigestLength(inner_length);
+			return Digest.newInstance(nodeParam);
+		}
+		/** returns the Digest for root node */
+		public final Digest getRoot () {
+			final int depth = this.depth - 1;
+			final Param rootParam = treeParam().setNodeDepth(depth).setNodeOffset(0L).setDigestLength(digest_length);
+			return Digest.newInstance(rootParam);
 		}
 	}
 
@@ -317,13 +327,28 @@ public interface Blake2b {
 			this.oneByte = new byte[1];
 			this.outlen = param.getDigestLength();
 
+			if ( param.getDepth() > Param.Default.depth ) {
+				final int ndepth = param.getNodeDepth();
+				final long nxoff = param.getNodeOffset();
+				if (ndepth == param.getDepth() - 1) {
+					last_node = true;
+					assert param.getNodeOffset() == 0 : "root must have offset of zero";
+				} else if ( param.getNodeOffset() == param.getFanout() - 1) {
+					this.last_node = true;
+				}
+			}
+
 			initialize();
+
+//			Debug.dumpBuffer(System.out, "param bytes at init", param.getBytes());
+
 		}
 
 		private void initialize () {
 			// state vector h - copy values to address reset() requests
 			System.arraycopy( param.initialized_H(), 0, this.h, 0, Spec.state_space_len);
 
+//			Debug.dumpArray("init H", this.h);
 			// if we have a key update initial block
 			// Note param has zero padded key_bytes to Spec.max_key_bytes
 			if(param.hasKey){
@@ -334,7 +359,7 @@ public interface Blake2b {
 		public static void main(String... args) {
 			Blake2b mac = Blake2b.Mac.newInstance("LOVE".getBytes());
 			final byte[] hash = mac.digest("Salaam!".getBytes());
-			Debug.dumpBuffer(System.out, "-- mac hash --", hash);
+//			Debug.dumpBuffer(System.out, "-- mac hash --", hash);
 		}
 
 		// ---------------------------------------------------------------------
@@ -632,6 +657,11 @@ public interface Blake2b {
 			m[15] |= ((long) b[ offset + 125 ] & 0xFF ) << 40;
 			m[15] |= ((long) b[ offset + 126 ] & 0xFF ) << 48;
 			m[15] |= ((long) b[ offset + 127 ]        ) << 56;
+//			Debug.dumpArray("m @ compress", m);
+//
+//			Debug.dumpArray("h @ compress", h);
+//			Debug.dumpArray("t @ compress", t);
+//			Debug.dumpArray("f @ compress", f);
 
 			// set v registers
 			v[ 0] = h[ 0];
@@ -642,15 +672,16 @@ public interface Blake2b {
 			v[ 5] = h[ 5];
 			v[ 6] = h[ 6];
 			v[ 7] = h[ 7];
-			v[ 8] = Spec.IV [ 0 ];
-			v[ 9] = Spec.IV [ 1 ];
-			v[10] = Spec.IV [ 2 ];
-			v[11] = Spec.IV [ 3 ];
-			v[12] = t [ 0 ] ^ Spec.IV [ 4 ];
-			v[13] = t [ 1 ] ^ Spec.IV [ 5 ];
-			v[14] = f [ 0 ] ^ Spec.IV [ 6 ];
-			v[15] = f [ 1 ] ^ Spec.IV [ 7 ];
+			v[ 8] =           0x6a09e667f3bcc908L;
+			v[ 9] =           0xbb67ae8584caa73bL;
+			v[10] =           0x3c6ef372fe94f82bL;
+			v[11] =           0xa54ff53a5f1d36f1L;
+			v[12] = t [ 0 ] ^ 0x510e527fade682d1L;
+			v[13] = t [ 1 ] ^ 0x9b05688c2b3e6c1fL;
+			v[14] = f [ 0 ] ^ 0x1f83d9abfb41bd6bL;
+			v[15] = f [ 1 ] ^ 0x5be0cd19137e2179L;
 
+//			Debug.dumpArray("v @ compress", v);
 			// the rounds
 			// REVU: let's try unrolling this again TODO do & bench
 			for (int r = 0; r < 12; r++) {
@@ -786,6 +817,8 @@ public interface Blake2b {
 			h[ 6] ^= v[6] ^ v[14];
 			h[ 7] ^= v[7] ^ v[15];
 
+//			Debug.dumpArray("v @ compress end", v);
+//			Debug.dumpArray("h @ compress end", h);
 			/* kaamil */
 		}
 
@@ -804,7 +837,7 @@ public interface Blake2b {
 				System.out.format("-- END MARK =================\n");
 			}
 			public static void dumpArray (final String label, final long[] b) {
-				System.out.format ( "-- DUMP -- %s: \n{\n", label );
+				System.out.format ( "-- %s -- :\n{\n", label );
 				for( int j = 0; j < b.length ; ++j ) {
 					System.out.format ( "    [%2d] : %016X\n", j, b[j]);
 				}
@@ -821,7 +854,7 @@ public interface Blake2b {
 			}
 			public static void dumpBuffer (final PrintStream out, final String label, final byte[] b, final int offset, final int len) {
 				if(label != null)
-					out.format ( "-- DUMP -- %s: \n", label );
+					out.format ( "-- %s -- :\n", label );
 				out.format("{\n    ", label);
 				for( int j = 0; j < len ; ++j ) {
 					out.format ("%02X", b[j + offset]);
@@ -850,19 +883,48 @@ public interface Blake2b {
 		}
 		// ---------------------------------------------------------------------
 		// Little Endian Codecs (inlined in the compressor)
+		/*
+		 * impl note: these are not library funcs and used in hot loops, so no
+		 * null or bounds checks are performed. For our purposes, this is OK.
+		 */
 		// ---------------------------------------------------------------------
+
 		public static class LittleEndian {
+			private static final byte[] hex_digits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'};
+			private static final byte[] HEX_digits = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+			/** @return hex rep of byte (lower case). */
+			static public String toHexStr (final byte[] b) {
+				return toHexStr (b, false); // because String class is slower.
+			}
+			static public String toHexStr (final byte[] b, boolean upperCase) {
+				final int len = b.length;
+				final byte[] digits = new byte[ len * 2 ];
+				final byte[] hex_rep = upperCase ? HEX_digits : hex_digits ;
+				for (int i = 0; i < len; i++) {
+					digits [ i*2   ] = hex_rep [ (byte) (b[i] >> 4 & 0x0F)  ];
+					digits [ i*2+1 ] = hex_rep [ (byte) (b[i]      & 0x0F) ];
+				}
+				return new String(digits);
+			}
+			public static int readInt (final byte[] b, int off) {
+				int v0
+					= ((int)b [ off++ ] & 0xFF );
+				v0 |= ((int)b [ off++ ] & 0xFF ) <<  8;
+				v0 |= ((int)b [ off++ ] & 0xFF ) << 16;
+				v0 |= ((int)b [ off   ]        ) << 24;
+				return v0;
+			}
 			/** Little endian - byte[] to long */
 			public static long readLong (final byte[] b, int off) {
 				long v0
-					= ((long)b [ off++ ] & 0xFF);
+					= ((long)b [ off++ ] & 0xFF );
 				v0 |= ((long)b [ off++ ] & 0xFF ) <<  8;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 16;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 24;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 32;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 40;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 48;
-				v0 |= ((long)b [ off++ ]        ) << 56;
+				v0 |= ((long)b [ off   ]        ) << 56;
 				return v0;
 			}
 			/** */
@@ -890,6 +952,7 @@ public interface Blake2b {
 	// digest parameter (block)
 	// ---------------------------------------------------------------------
 	/** Blake2b configuration parameters block per spec */
+	// REVU: need to review a revert back to non-lazy impl TODO: do & bench
 	public static class Param implements AlgorithmParameterSpec {
 		interface Xoff {
 			int digest_length   = 0;
@@ -899,7 +962,7 @@ public interface Blake2b {
 			int leaf_length     = 4;
 			int node_offset     = 8;
 			int node_depth      = 16;
-			int inner_depth     = 17;
+			int inner_length    = 17;
 			int reserved        = 18;
 			int salt            = 32;
 			int personal        = 48;
@@ -925,7 +988,7 @@ public interface Blake2b {
 			/* def. leaf_length is 0 fill and already set by new byte[] */
 			/* def. node_offset is 0 fill and already set by new byte[] */
 			default_bytes [ Xoff.node_depth ] = Default.node_depth;
-			default_bytes [ Xoff.inner_depth ] = Default.inner_length;
+			default_bytes [ Xoff.inner_length] = Default.inner_length;
 			/* def. salt is 0 fill and already set by new byte[] */
 			/* def. personal is 0 fill and already set by new byte[] */
 		}
@@ -969,17 +1032,52 @@ public interface Blake2b {
 			return h;
 		}
 		/** package only - copy returned - do not use in functional loops */
-		byte[] getBytes() {
+		public byte[] getBytes() {
 			lazyInitBytes();
 			byte[] copy = new byte[ bytes.length ];
 			System.arraycopy( bytes, 0, copy, 0, bytes.length );
 			return copy;
 		}
 
-		public final int getDigestLength() {
+		final byte getByteParam (final int xoffset) {
 			byte[] _bytes = bytes;
 			if(_bytes == null) _bytes = Param.default_bytes;
-			return (int) _bytes[ Xoff.digest_length ];
+			return _bytes[ xoffset];
+		}
+		final int getIntParam (final int xoffset) {
+			byte[] _bytes = bytes;
+			if(_bytes == null) _bytes = Param.default_bytes;
+			return readInt ( _bytes, xoffset);
+		}
+		final long getLongParam (final int xoffset) {
+			byte[] _bytes = bytes;
+			if(_bytes == null) _bytes = Param.default_bytes;
+			return readLong ( _bytes, xoffset);
+		}
+		// TODO same for tree params depth, fanout, inner, node-depth, node-offset
+		public final int getDigestLength() {
+			return (int) getByteParam ( Xoff.digest_length );
+		}
+		public final int getKeyLength() {
+			return (int) getByteParam ( Xoff.key_length );
+		}
+		public final int getFanout() {
+			return (int) getByteParam ( Xoff.fanout );
+		}
+		public final int getDepth() {
+			return (int) getByteParam ( Xoff.depth );
+		}
+		public final int getLeafLength() {
+			return getIntParam ( Xoff.leaf_length );
+		}
+		public final long getNodeOffset() {
+			return getLongParam ( Xoff.node_offset );
+		}
+		public final int getNodeDepth() {
+			return (int) getByteParam ( Xoff.node_depth );
+		}
+		public final int getInnerLength() {
+			return (int) getByteParam ( Xoff.inner_length );
 		}
 
 		public final boolean hasKey() { return this.hasKey; }
@@ -987,6 +1085,14 @@ public interface Blake2b {
 		@Override public Param clone() {
 			final Param clone = new Param();
 			System.arraycopy(this.h, 0, clone.h, 0, h.length);
+			clone.lazyInitBytes();
+			System.arraycopy(this.bytes, 0, clone.bytes, 0, this.bytes.length);
+
+			if(this.hasKey){
+				clone.hasKey = this.hasKey;
+				clone.key_bytes = new byte [Spec.max_key_bytes * 2];
+				System.arraycopy(this.key_bytes, 0, clone.key_bytes, 0, this.key_bytes.length);
+			}
 			return clone;
 		}
 		////////////////////////////////////////////////////////////////////////
@@ -1053,7 +1159,7 @@ public interface Blake2b {
 			assert leaf_length >= 0 : assertFail("leaf_length", leaf_length, inclusiveLowerBound, 0);
 
 			lazyInitBytes();
-			writeInt(leaf_length, bytes, Xoff.node_offset);
+			writeInt (leaf_length, bytes, Xoff.leaf_length);
 			h[ 0 ] = readLong( bytes, 0  );
 			h[ 0 ] ^= Spec.IV [ 0 ];
 			return this;
@@ -1078,14 +1184,18 @@ public interface Blake2b {
 			bytes[ Xoff.node_depth ] = (byte) node_depth;
 			h[ 2 ] = readLong( bytes, Xoff.node_depth );
 			h[ 2 ] ^= Spec.IV [ 2 ];
+			h[ 3 ] = readLong( bytes, Xoff.node_depth + 8);
+			h[ 3 ] ^= Spec.IV [ 3 ];
 			return this;
 		}
 		public final Param setInnerLength(int inner_length) {
 			assert inner_length >= 0 : assertFail("inner_length", inner_length, inclusiveLowerBound, 0);
 
 			lazyInitBytes();
-			bytes[ Xoff.inner_depth ] = (byte) inner_length;
-			h[ 3 ] = readLong( bytes, Xoff.inner_depth );
+			bytes[ Xoff.inner_length] = (byte) inner_length;
+			h[ 2 ] = readLong( bytes, Xoff.node_depth );
+			h[ 2 ] ^= Spec.IV [ 2 ];
+			h[ 3 ] = readLong( bytes, Xoff.node_depth + 8);
 			h[ 3 ] ^= Spec.IV [ 3 ];
 			return this;
 		}
@@ -1124,39 +1234,5 @@ public interface Blake2b {
 		////////////////////////////////////////////////////////////////////////
 		/// lazy setters /////////////////////////////////////////////////// END
 		////////////////////////////////////////////////////////////////////////
-	}
-	public static final class NodeParam extends Param {
-		public NodeParam (
-			final int     fanout,
-			final int     depth,
-			final int     leaf_length,
-			final int     inner_length,
-			/* node specific params */
-			final long    node_offset,
-			final int     node_depth
-		) {
-			this (fanout, depth, leaf_length, inner_length, node_offset, node_depth, false);
-		}
-
-		public NodeParam (
-			/* generic tree params */
-			final int     fanout,
-			final int     depth,
-			final int     leaf_length,
-			final int     inner_length,
-			/* node specific params */
-			final long    node_offset,
-			final int     node_depth,
-			final boolean last_node
-		) {
-			super();
-			this.
-				setFanout      (fanout).
-				setDepth       (depth).
-				setLeafLength  (leaf_length).
-				setNodeOffset  (node_offset).
-				setNodeDepth   (node_depth).
-				setInnerLength (inner_length);
-		}
 	}
 }

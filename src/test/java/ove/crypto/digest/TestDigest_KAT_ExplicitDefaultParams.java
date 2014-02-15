@@ -19,18 +19,11 @@
 
 package ove.crypto.digest;
 
-import org.testng.annotations.Test;
-
-@Test
-public class TestParam {
-	public void testClone() {
-		try {
-		final Blake2b.Param param = Blake2BTestUtils.newDefaultParam();
-		final Blake2b.Param clone = param.clone();
-
-		// TODO deep compare.
-		} catch (Throwable e) {
-			e.printStackTrace();;
-		}
+/** TODO document me */
+public class TestDigest_KAT_ExplicitDefaultParams extends TestDigestAbstractBase {
+	/** create a Blake2b digest using explicit default params */
+	@Override final protected Blake2b newMessageDigest() {
+		final Blake2b.Param config = new Blake2b.Param();
+		return Blake2b.Digest.newInstance (config);
 	}
 }

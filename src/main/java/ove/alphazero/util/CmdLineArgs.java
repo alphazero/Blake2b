@@ -22,6 +22,7 @@ package ove.alphazero.util;
 import java.util.HashMap;
 import java.util.Map;
 
+// REVU: (TODO) add general bounds checks and default support for -h/--help
 public final class CmdLineArgs {
 	static final String PREFIX_FLAG = "--";
 	static final String PREFIX_OPT = "-";

@@ -31,7 +31,7 @@ import static ove.crypto.digest.Blake2BTestUtils.*;
 /**
  * Test suite of message digest functionality checked against reference KeyedKAT data.
  */
-abstract public class TestKeyKAT extends Blake2bTestsBase {
+abstract public class TestMACAbstractBase extends Blake2bTestsBase {
 
 	public static byte[] getTestKeyBytes () {
 		return Blake2BTestUtils.Reference.getKATKey();
@@ -56,7 +56,7 @@ abstract public class TestKeyKAT extends Blake2bTestsBase {
 //	@Test(suiteName = "blake2b")
 	@Test()
 	public void testFullUpdate() {
-		System.out.format("%s.testFullUpdate \n", this.getClass().getSimpleName());
+		logit(this, "testFullUpdate");
 
 		// load refrence KAT data
 		final byte[] refbytes = loadKATData( blake2b_key_kat );
@@ -85,7 +85,8 @@ abstract public class TestKeyKAT extends Blake2bTestsBase {
 //	@Test(suiteName = "blake2b")
 	@Test()
 	public void testSingleByteUpdates()  {
-		System.out.format("%s.testSingleByteUpdates \n", this.getClass().getSimpleName());
+		logit(this, "testSingleByteUpdates");
+
 		// load refrence KAT data
 		final byte[] refbytes = loadKATData( blake2b_key_kat );
 

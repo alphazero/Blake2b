@@ -20,10 +20,8 @@
 package ove.crypto.digest;
 
 /** TODO document me */
-public class TestKAT_ExplicitDefaultParams extends TestKAT {
-	/** create a Blake2b digest using explicit default params */
-	@Override final protected Blake2b newMessageDigest() {
-		final Blake2b.Param config = new Blake2b.Param();
-		return Blake2b.Digest.newInstance (config);
+public class TestMAC_KeyedKAT_DefaultParam extends TestMACAbstractBase {
+	@Override protected Blake2b newMessageDigest() {
+		return Blake2b.Mac.newInstance ( getTestKeyBytes() );
 	}
 }

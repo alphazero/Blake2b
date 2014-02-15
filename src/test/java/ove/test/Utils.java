@@ -22,10 +22,43 @@ package ove.test;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
+import java.util.Random;
 
 public class Utils {
+
+	public static final Random deterministic = new Random (0);
+	public static final Random random = new Random (System.nanoTime());
+
 	private static final File testoutDir = new File("src/test/out/");
 
+	public static int[] random32BitValuesInclusive(final int from, final int to, int cnt) {
+		if(cnt < 2) cnt = 2;
+
+		final int[] varr = new int [cnt];
+		varr[0] = from;
+		varr[1] = to;
+		final int lim0 = to - from;
+		for (int i=2; i<cnt; i++) {
+			varr[i] = random.nextInt(lim0) + from;
+		}
+		return varr;
+	}
+	public static long[] random64BitValuesInclusive(int cnt) {
+		final long[] varr = new long [cnt];
+		varr[0] = 0x0L;
+		varr[1] = 0xFFFFFFFFFFFFFFF7L;
+		varr[2] = 0x0000000000000008L;
+		for (int i=3; i<cnt; i++) {
+			varr[i] = random.nextLong();
+		}
+		return varr;
+	}
+	public static void logit (final Object test, final String method) {
+		System.out.format("[TEST] - %s.%s \n", test.getClass().getSimpleName(), method);
+	}
+	public static String eqFail (final String what) {
+		return String.format("%ss differ", what);
+	}
 	public static File getTestOutputDir () {
 		if(!testoutDir.exists()) {
 			testoutDir.mkdirs();

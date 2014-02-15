@@ -25,6 +25,9 @@ import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
 
+import static ove.test.Utils.*;
+import static org.testng.Assert.*;
+
 /** TODO document me */
 public class Blake2BTestUtils {
 
@@ -34,6 +37,38 @@ public class Blake2BTestUtils {
 	public static final File referenceDataDir = new File("src/test/resources/reference-impl");
 	public static final String blake2b_kat = "blake2b-kat.out";
 	public static final String blake2b_key_kat = "blake2b-key-kat.out";
+
+	/**
+	 * Compare a Param and its clone.
+	 * @param o the original
+	 * @param c the clone
+	 */
+	public static void compare (final Blake2b.Param o, final Blake2b.Param c){
+//		final class msg { String fmt (String what) { return String.format("%ss differ", what);}}
+//		final msg err = new msg();
+		// compare the param (byte[]) block
+		final byte[] Bo = o.getBytes();
+		final byte[] Bc = c.getBytes();
+		assertEquals (Bo, Bc, eqFail ("bytes"));
+
+		// compare the initialized H (long[]) vectors
+		final long[] Ho = o.initialized_H();
+		final long[] Hc = c.initialized_H();
+		assertEquals (Ho, Hc, eqFail("H vectors"));
+
+		// now compare all Getters
+		assertEquals (o.getDigestLength(),   c.getDigestLength(),   eqFail("getDigestLength"));
+		assertEquals (o.getKeyLength(),      c.getKeyLength(),      eqFail("getKeyLength"));
+		assertEquals (o.getFanout(),         c.getFanout(),         eqFail("getFanout"));
+		assertEquals (o.getDepth(),          c.getDepth(),          eqFail("getDepth"));
+		assertEquals (o.getLeafLength(),     c.getLeafLength(),     eqFail("getLeafLength"));
+
+		assertEquals (o.getNodeOffset(),     c.getNodeOffset(),     eqFail("getNodeOffset"));
+		assertEquals (o.getNodeDepth(),      c.getNodeDepth(),      eqFail("getNodeDepth"));
+		assertEquals (o.getInnerLength(),    c.getInnerLength(),    eqFail("getInnerLength"));
+
+		assertEquals (o.hasKey(),    c.hasKey(),    eqFail("hasKey"));
+	}
 
 	public static Blake2b.Param newDefaultParam() {
 		final Blake2b.Param config = new Blake2b.Param();

@@ -22,7 +22,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>ove</groupId>
-    <artifactId>blake2b</artifactId>
+    <artifactId>ove.blake2b</artifactId>
     <version>alpha.0</version>
     <name>ove-blake2b</name>
     <description>A Java implementation of the Blake2b digest</description>
