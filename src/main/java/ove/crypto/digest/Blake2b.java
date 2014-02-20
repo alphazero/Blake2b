@@ -237,7 +237,7 @@ public interface Blake2b {
 	// ---------------------------------------------------------------------
 	// Engine
 	// ---------------------------------------------------------------------
-	public static class Engine implements Blake2b {
+	static class Engine implements Blake2b {
 
 		/* G0 sigmas */
 		static final int[] sig_g00 = {  0, 14, 11,  7,  9,  2, 12, 13,  6, 10,  0, 14, };
@@ -315,12 +315,12 @@ public interface Blake2b {
 		// ---------------------------------------------------------------------
 
 		/** Basic use constructor pending (TODO) JCA/JCE compliance */
-		public Engine () {
+		Engine () {
 			this( new Param() );
 		}
 
 		/** User provided Param for custom configurations */
-		public Engine (final Param param) {
+		Engine (final Param param) {
 			assert param != null : "param is null";
 			this.param = param;
 			this.buffer = new byte [ Spec.block_bytes ];
@@ -514,7 +514,7 @@ public interface Blake2b {
 
 			// set m registers
 			// REVU: some small gains still possible here.
-			m[ 0]  = ((long) b[ offset +   0 ] & 0xFF );
+			m[ 0]  = ((long) b[ offset       ] & 0xFF );
 			m[ 0] |= ((long) b[ offset +   1 ] & 0xFF ) <<  8;
 			m[ 0] |= ((long) b[ offset +   2 ] & 0xFF ) << 16;
 			m[ 0] |= ((long) b[ offset +   3 ] & 0xFF ) << 24;
