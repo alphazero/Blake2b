@@ -67,7 +67,7 @@ public interface Blake2b {
 		int max_tree_leaf_length 	= 0xFFFFFFFF;
 
 		/** max node offset value. Note that this has uint64 semantics
-		    and thus 0xFFFFFFFFFFFFFFFFL is used as max value limit. */
+		 and thus 0xFFFFFFFFFFFFFFFFL is used as max value limit. */
 		long max_node_offset 		= 0xFFFFFFFFFFFFFFFFL;
 
 		/** max tree inner length value */
@@ -155,8 +155,8 @@ public interface Blake2b {
 			System.arraycopy(this.h, 0, state.h, 0, state.h.length);
 			System.arraycopy(this.t, 0, state.t, 0, state.t.length);
 			System.arraycopy(this.f, 0, state.f, 0, state.f.length);
-			System.arraycopy(this.m, 0, state.m, 0, state.m.length);
-			System.arraycopy(this.v, 0, state.v, 0, state.v.length);
+			System.arraycopy(this.m, 0, m, 0, m.length);
+			System.arraycopy(this.v, 0, v, 0, v.length);
 			System.arraycopy(this.buffer, 0, state.buffer, 0, state.buffer.length);
 			state.buflen = buflen;
 			return type == 1 ?  new Mac(param, state) : new Digest(param, state);
@@ -270,11 +270,11 @@ public interface Blake2b {
 		 * @param digest_length final hash out digest-length for the tree
 		 */
 		public Tree  (
-			final int     depth,
-			final int     fanout,
-			final int     leaf_length,
-			final int     inner_length,
-			final int     digest_length
+				final int     depth,
+				final int     fanout,
+				final int     leaf_length,
+				final int     inner_length,
+				final int     digest_length
 		) {
 			this.fanout = fanout;
 			this.depth = depth;
@@ -284,7 +284,7 @@ public interface Blake2b {
 		}
 		private Param treeParam() {
 			return new Param().
-				setDepth(depth).setFanout(fanout).setLeafLength(leaf_length).setInnerLength(inner_length);
+					setDepth(depth).setFanout(fanout).setLeafLength(leaf_length).setInnerLength(inner_length);
 		}
 		/** returns the Digest for tree node @ (depth, offset) */
 		public final Digest getNode (final int depth, final int offset) {
@@ -376,7 +376,7 @@ public interface Blake2b {
 				state.h = h;
 				state.t = t;
 				state.f = f;
-			    state.last_node = last_node;
+				state.last_node = last_node;
 				state.m = m;
 				state.v = v;
 				state.buffer = buffer;
@@ -388,7 +388,7 @@ public interface Blake2b {
 		}
 
 		private State state;
-			/** configuration params */
+		/** configuration params */
 		private final   Param param;
 
 		/** read only */
@@ -399,7 +399,7 @@ public interface Blake2b {
 			int last_block 	= 0;
 			int last_node 	= 1;
 		}
-			/** to support update(byte) */
+		/** to support update(byte) */
 		private final	byte[] oneByte = new byte[1];
 
 		// ---------------------------------------------------------------------
@@ -495,21 +495,23 @@ public interface Blake2b {
 			/* zero or more calls to compress */
 			// REVU: possibly the double buffering of c-ref is more sensible ..
 			//       regardless, the hotspot is in the compress, as expected.
+			final long[] t = state.t;
+			final byte[] buffer = state.buffer;
 			while (len > 0) {
 				if ( state.buflen == 0) {
 					/* try compressing direct from input ? */
 					while ( len > Spec.block_bytes ) {
-						this.state.t[0] += Spec.block_bytes;
-						this.state.t[1] += this.state.t[0] == 0 ? 1 : 0;
+						t[0] += Spec.block_bytes;
+						t[1] += (t[0] < 0 && state.buflen > -t[0]) ? 1 : 0;
 						compress( b, off);
 						len -= Spec.block_bytes;
 						off += Spec.block_bytes;
 					}
 				} else if ( state.buflen == Spec.block_bytes ) {
 					/* flush */
-					this.state.t[0] += Spec.block_bytes;
-					this.state.t[1] += this.state.t[0] == 0 ? 1 : 0;
-					compress( state.buffer, 0 );
+					t[0] += Spec.block_bytes;
+					t[1] += t[0] == 0 ? 1 : 0;
+					compress( buffer, 0 );
 					state.buflen = 0;
 					continue;
 				}
@@ -519,7 +521,7 @@ public interface Blake2b {
 
 				final int cap = Spec.block_bytes - state.buflen;
 				final int fill = len > cap ? cap : len;
-				System.arraycopy( b, off, state.buffer, state.buflen, fill );
+				System.arraycopy( b, off, buffer, state.buflen, fill );
 				state.buflen += fill;
 				len -= fill;
 				off += fill;
@@ -540,13 +542,10 @@ public interface Blake2b {
 		/** {@inheritDoc} */
 		@Override final public void digest(byte[] output, int off, int len) {
 			// zero pad last block; set last block flags; and compress
-			System.arraycopy( zeropad, 0, buffer, buflen, Spec.block_bytes - buflen);
-			if(buflen > 0) {
-				this.t[0] += buflen;
-				/* FIX ISSUE-1 message lengths exceeding 2^64 - credit Axel von dem Bruch (Beloumi@github) */
-//				this.t[1] += this.t[0] == 0 ? 1 : 0;
-				this.t[1] += (this.t[0] < 0 && buflen > -this.t[0]) ? 1 : 0;
-				/* FIX ISSUE-1 END */
+			System.arraycopy( zeropad, 0, state.buffer, state.buflen, Spec.block_bytes - state.buflen);
+			if(state.buflen > 0) {
+				this.state.t[0] += state.buflen;
+				this.state.t[1] += this.state.t[0] == 0 ? 1 : 0;
 			}
 
 			this.state.f[ flag.last_block ] = 0xFFFFFFFFFFFFFFFFL;
@@ -585,8 +584,9 @@ public interface Blake2b {
 			final int lcnt = hashlen >>> 3;
 			long v = 0;
 			int i = offset;
+			final long[] h = state.h;
 			for (int w = 0; w < lcnt; w++) {
-				v = state.h [ w ];
+				v = h [ w ];
 				out [ i++ ] = (byte) v; v >>>= 8;
 				out [ i++ ] = (byte) v; v >>>= 8;
 				out [ i++ ] = (byte) v; v >>>= 8;
@@ -601,7 +601,7 @@ public interface Blake2b {
 			if( hashlen == Spec.max_digest_bytes) return;
 
 			// write the remaining bytes of a partial long value
-			v = state.h [ lcnt ];
+			v = h [ lcnt ];
 			i = lcnt << 3;
 			while( i < hashlen ) {
 				out [ offset + i ] = (byte) v; v >>>= 8; ++i;
@@ -616,150 +616,151 @@ public interface Blake2b {
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
+			final long[] m = state.m; // dereference state once - perf. critical [typical for all registers in kernel]
 			// REVU: some small gains still possible here.
-			state.m[ 0]  = ((long) b[ offset       ] & 0xFF );
-			state.m[ 0] |= ((long) b[ offset +   1 ] & 0xFF ) <<  8;
-			state.m[ 0] |= ((long) b[ offset +   2 ] & 0xFF ) << 16;
-			state.m[ 0] |= ((long) b[ offset +   3 ] & 0xFF ) << 24;
-			state.m[ 0] |= ((long) b[ offset +   4 ] & 0xFF ) << 32;
-			state.m[ 0] |= ((long) b[ offset +   5 ] & 0xFF ) << 40;
-			state.m[ 0] |= ((long) b[ offset +   6 ] & 0xFF ) << 48;
-			state.m[ 0] |= ((long) b[ offset +   7 ]        ) << 56;
+			m[ 0]  = ((long) b[ offset       ] & 0xFF );
+			m[ 0] |= ((long) b[ offset +   1 ] & 0xFF ) <<  8;
+			m[ 0] |= ((long) b[ offset +   2 ] & 0xFF ) << 16;
+			m[ 0] |= ((long) b[ offset +   3 ] & 0xFF ) << 24;
+			m[ 0] |= ((long) b[ offset +   4 ] & 0xFF ) << 32;
+			m[ 0] |= ((long) b[ offset +   5 ] & 0xFF ) << 40;
+			m[ 0] |= ((long) b[ offset +   6 ] & 0xFF ) << 48;
+			m[ 0] |= ((long) b[ offset +   7 ]        ) << 56;
 
-			state.m[ 1]  = ((long) b[ offset +   8 ] & 0xFF );
-			state.m[ 1] |= ((long) b[ offset +   9 ] & 0xFF ) <<  8;
-			state.m[ 1] |= ((long) b[ offset +  10 ] & 0xFF ) << 16;
-			state.m[ 1] |= ((long) b[ offset +  11 ] & 0xFF ) << 24;
-			state.m[ 1] |= ((long) b[ offset +  12 ] & 0xFF ) << 32;
-			state.m[ 1] |= ((long) b[ offset +  13 ] & 0xFF ) << 40;
-			state.m[ 1] |= ((long) b[ offset +  14 ] & 0xFF ) << 48;
-			state.m[ 1] |= ((long) b[ offset +  15 ]        ) << 56;
+			m[ 1]  = ((long) b[ offset +   8 ] & 0xFF );
+			m[ 1] |= ((long) b[ offset +   9 ] & 0xFF ) <<  8;
+			m[ 1] |= ((long) b[ offset +  10 ] & 0xFF ) << 16;
+			m[ 1] |= ((long) b[ offset +  11 ] & 0xFF ) << 24;
+			m[ 1] |= ((long) b[ offset +  12 ] & 0xFF ) << 32;
+			m[ 1] |= ((long) b[ offset +  13 ] & 0xFF ) << 40;
+			m[ 1] |= ((long) b[ offset +  14 ] & 0xFF ) << 48;
+			m[ 1] |= ((long) b[ offset +  15 ]        ) << 56;
 
-			state.m[ 2]  = ((long) b[ offset +  16 ] & 0xFF );
-			state.m[ 2] |= ((long) b[ offset +  17 ] & 0xFF ) <<  8;
-			state.m[ 2] |= ((long) b[ offset +  18 ] & 0xFF ) << 16;
-			state.m[ 2] |= ((long) b[ offset +  19 ] & 0xFF ) << 24;
-			state.m[ 2] |= ((long) b[ offset +  20 ] & 0xFF ) << 32;
-			state.m[ 2] |= ((long) b[ offset +  21 ] & 0xFF ) << 40;
-			state.m[ 2] |= ((long) b[ offset +  22 ] & 0xFF ) << 48;
-			state.m[ 2] |= ((long) b[ offset +  23 ]        ) << 56;
+			m[ 2]  = ((long) b[ offset +  16 ] & 0xFF );
+			m[ 2] |= ((long) b[ offset +  17 ] & 0xFF ) <<  8;
+			m[ 2] |= ((long) b[ offset +  18 ] & 0xFF ) << 16;
+			m[ 2] |= ((long) b[ offset +  19 ] & 0xFF ) << 24;
+			m[ 2] |= ((long) b[ offset +  20 ] & 0xFF ) << 32;
+			m[ 2] |= ((long) b[ offset +  21 ] & 0xFF ) << 40;
+			m[ 2] |= ((long) b[ offset +  22 ] & 0xFF ) << 48;
+			m[ 2] |= ((long) b[ offset +  23 ]        ) << 56;
 
-			state.m[ 3]  = ((long) b[ offset +  24 ] & 0xFF );
-			state.m[ 3] |= ((long) b[ offset +  25 ] & 0xFF ) <<  8;
-			state.m[ 3] |= ((long) b[ offset +  26 ] & 0xFF ) << 16;
-			state.m[ 3] |= ((long) b[ offset +  27 ] & 0xFF ) << 24;
-			state.m[ 3] |= ((long) b[ offset +  28 ] & 0xFF ) << 32;
-			state.m[ 3] |= ((long) b[ offset +  29 ] & 0xFF ) << 40;
-			state.m[ 3] |= ((long) b[ offset +  30 ] & 0xFF ) << 48;
-			state.m[ 3] |= ((long) b[ offset +  31 ]        ) << 56;
+			m[ 3]  = ((long) b[ offset +  24 ] & 0xFF );
+			m[ 3] |= ((long) b[ offset +  25 ] & 0xFF ) <<  8;
+			m[ 3] |= ((long) b[ offset +  26 ] & 0xFF ) << 16;
+			m[ 3] |= ((long) b[ offset +  27 ] & 0xFF ) << 24;
+			m[ 3] |= ((long) b[ offset +  28 ] & 0xFF ) << 32;
+			m[ 3] |= ((long) b[ offset +  29 ] & 0xFF ) << 40;
+			m[ 3] |= ((long) b[ offset +  30 ] & 0xFF ) << 48;
+			m[ 3] |= ((long) b[ offset +  31 ]        ) << 56;
 
-			state.m[ 4]  = ((long) b[ offset +  32 ] & 0xFF );
-			state.m[ 4] |= ((long) b[ offset +  33 ] & 0xFF ) <<  8;
-			state.m[ 4] |= ((long) b[ offset +  34 ] & 0xFF ) << 16;
-			state.m[ 4] |= ((long) b[ offset +  35 ] & 0xFF ) << 24;
-			state.m[ 4] |= ((long) b[ offset +  36 ] & 0xFF ) << 32;
-			state.m[ 4] |= ((long) b[ offset +  37 ] & 0xFF ) << 40;
-			state.m[ 4] |= ((long) b[ offset +  38 ] & 0xFF ) << 48;
-			state.m[ 4] |= ((long) b[ offset +  39 ]        ) << 56;
+			m[ 4]  = ((long) b[ offset +  32 ] & 0xFF );
+			m[ 4] |= ((long) b[ offset +  33 ] & 0xFF ) <<  8;
+			m[ 4] |= ((long) b[ offset +  34 ] & 0xFF ) << 16;
+			m[ 4] |= ((long) b[ offset +  35 ] & 0xFF ) << 24;
+			m[ 4] |= ((long) b[ offset +  36 ] & 0xFF ) << 32;
+			m[ 4] |= ((long) b[ offset +  37 ] & 0xFF ) << 40;
+			m[ 4] |= ((long) b[ offset +  38 ] & 0xFF ) << 48;
+			m[ 4] |= ((long) b[ offset +  39 ]        ) << 56;
 
-			state.m[ 5]  = ((long) b[ offset +  40 ] & 0xFF );
-			state.m[ 5] |= ((long) b[ offset +  41 ] & 0xFF ) <<  8;
-			state.m[ 5] |= ((long) b[ offset +  42 ] & 0xFF ) << 16;
-			state.m[ 5] |= ((long) b[ offset +  43 ] & 0xFF ) << 24;
-			state.m[ 5] |= ((long) b[ offset +  44 ] & 0xFF ) << 32;
-			state.m[ 5] |= ((long) b[ offset +  45 ] & 0xFF ) << 40;
-			state.m[ 5] |= ((long) b[ offset +  46 ] & 0xFF ) << 48;
-			state.m[ 5] |= ((long) b[ offset +  47 ]        ) << 56;
+			m[ 5]  = ((long) b[ offset +  40 ] & 0xFF );
+			m[ 5] |= ((long) b[ offset +  41 ] & 0xFF ) <<  8;
+			m[ 5] |= ((long) b[ offset +  42 ] & 0xFF ) << 16;
+			m[ 5] |= ((long) b[ offset +  43 ] & 0xFF ) << 24;
+			m[ 5] |= ((long) b[ offset +  44 ] & 0xFF ) << 32;
+			m[ 5] |= ((long) b[ offset +  45 ] & 0xFF ) << 40;
+			m[ 5] |= ((long) b[ offset +  46 ] & 0xFF ) << 48;
+			m[ 5] |= ((long) b[ offset +  47 ]        ) << 56;
 
-			state.m[ 6]  = ((long) b[ offset +  48 ] & 0xFF );
-			state.m[ 6] |= ((long) b[ offset +  49 ] & 0xFF ) <<  8;
-			state.m[ 6] |= ((long) b[ offset +  50 ] & 0xFF ) << 16;
-			state.m[ 6] |= ((long) b[ offset +  51 ] & 0xFF ) << 24;
-			state.m[ 6] |= ((long) b[ offset +  52 ] & 0xFF ) << 32;
-			state.m[ 6] |= ((long) b[ offset +  53 ] & 0xFF ) << 40;
-			state.m[ 6] |= ((long) b[ offset +  54 ] & 0xFF ) << 48;
-			state.m[ 6] |= ((long) b[ offset +  55 ]        ) << 56;
+			m[ 6]  = ((long) b[ offset +  48 ] & 0xFF );
+			m[ 6] |= ((long) b[ offset +  49 ] & 0xFF ) <<  8;
+			m[ 6] |= ((long) b[ offset +  50 ] & 0xFF ) << 16;
+			m[ 6] |= ((long) b[ offset +  51 ] & 0xFF ) << 24;
+			m[ 6] |= ((long) b[ offset +  52 ] & 0xFF ) << 32;
+			m[ 6] |= ((long) b[ offset +  53 ] & 0xFF ) << 40;
+			m[ 6] |= ((long) b[ offset +  54 ] & 0xFF ) << 48;
+			m[ 6] |= ((long) b[ offset +  55 ]        ) << 56;
 
-			state.m[ 7]  = ((long) b[ offset +  56 ] & 0xFF );
-			state.m[ 7] |= ((long) b[ offset +  57 ] & 0xFF ) <<  8;
-			state.m[ 7] |= ((long) b[ offset +  58 ] & 0xFF ) << 16;
-			state.m[ 7] |= ((long) b[ offset +  59 ] & 0xFF ) << 24;
-			state.m[ 7] |= ((long) b[ offset +  60 ] & 0xFF ) << 32;
-			state.m[ 7] |= ((long) b[ offset +  61 ] & 0xFF ) << 40;
-			state.m[ 7] |= ((long) b[ offset +  62 ] & 0xFF ) << 48;
-			state.m[ 7] |= ((long) b[ offset +  63 ]        ) << 56;
+			m[ 7]  = ((long) b[ offset +  56 ] & 0xFF );
+			m[ 7] |= ((long) b[ offset +  57 ] & 0xFF ) <<  8;
+			m[ 7] |= ((long) b[ offset +  58 ] & 0xFF ) << 16;
+			m[ 7] |= ((long) b[ offset +  59 ] & 0xFF ) << 24;
+			m[ 7] |= ((long) b[ offset +  60 ] & 0xFF ) << 32;
+			m[ 7] |= ((long) b[ offset +  61 ] & 0xFF ) << 40;
+			m[ 7] |= ((long) b[ offset +  62 ] & 0xFF ) << 48;
+			m[ 7] |= ((long) b[ offset +  63 ]        ) << 56;
 
-			state.m[ 8]  = ((long) b[ offset +  64 ] & 0xFF );
-			state.m[ 8] |= ((long) b[ offset +  65 ] & 0xFF ) <<  8;
-			state.m[ 8] |= ((long) b[ offset +  66 ] & 0xFF ) << 16;
-			state.m[ 8] |= ((long) b[ offset +  67 ] & 0xFF ) << 24;
-			state.m[ 8] |= ((long) b[ offset +  68 ] & 0xFF ) << 32;
-			state.m[ 8] |= ((long) b[ offset +  69 ] & 0xFF ) << 40;
-			state.m[ 8] |= ((long) b[ offset +  70 ] & 0xFF ) << 48;
-			state.m[ 8] |= ((long) b[ offset +  71 ]        ) << 56;
+			m[ 8]  = ((long) b[ offset +  64 ] & 0xFF );
+			m[ 8] |= ((long) b[ offset +  65 ] & 0xFF ) <<  8;
+			m[ 8] |= ((long) b[ offset +  66 ] & 0xFF ) << 16;
+			m[ 8] |= ((long) b[ offset +  67 ] & 0xFF ) << 24;
+			m[ 8] |= ((long) b[ offset +  68 ] & 0xFF ) << 32;
+			m[ 8] |= ((long) b[ offset +  69 ] & 0xFF ) << 40;
+			m[ 8] |= ((long) b[ offset +  70 ] & 0xFF ) << 48;
+			m[ 8] |= ((long) b[ offset +  71 ]        ) << 56;
 
-			state.m[ 9]  = ((long) b[ offset +  72 ] & 0xFF );
-			state.m[ 9] |= ((long) b[ offset +  73 ] & 0xFF ) <<  8;
-			state.m[ 9] |= ((long) b[ offset +  74 ] & 0xFF ) << 16;
-			state.m[ 9] |= ((long) b[ offset +  75 ] & 0xFF ) << 24;
-			state.m[ 9] |= ((long) b[ offset +  76 ] & 0xFF ) << 32;
-			state.m[ 9] |= ((long) b[ offset +  77 ] & 0xFF ) << 40;
-			state.m[ 9] |= ((long) b[ offset +  78 ] & 0xFF ) << 48;
-			state.m[ 9] |= ((long) b[ offset +  79 ]        ) << 56;
+			m[ 9]  = ((long) b[ offset +  72 ] & 0xFF );
+			m[ 9] |= ((long) b[ offset +  73 ] & 0xFF ) <<  8;
+			m[ 9] |= ((long) b[ offset +  74 ] & 0xFF ) << 16;
+			m[ 9] |= ((long) b[ offset +  75 ] & 0xFF ) << 24;
+			m[ 9] |= ((long) b[ offset +  76 ] & 0xFF ) << 32;
+			m[ 9] |= ((long) b[ offset +  77 ] & 0xFF ) << 40;
+			m[ 9] |= ((long) b[ offset +  78 ] & 0xFF ) << 48;
+			m[ 9] |= ((long) b[ offset +  79 ]        ) << 56;
 
-			state.m[10]  = ((long) b[ offset +  80 ] & 0xFF );
-			state.m[10] |= ((long) b[ offset +  81 ] & 0xFF ) <<  8;
-			state.m[10] |= ((long) b[ offset +  82 ] & 0xFF ) << 16;
-			state.m[10] |= ((long) b[ offset +  83 ] & 0xFF ) << 24;
-			state.m[10] |= ((long) b[ offset +  84 ] & 0xFF ) << 32;
-			state.m[10] |= ((long) b[ offset +  85 ] & 0xFF ) << 40;
-			state.m[10] |= ((long) b[ offset +  86 ] & 0xFF ) << 48;
-			state.m[10] |= ((long) b[ offset +  87 ]        ) << 56;
+			m[10]  = ((long) b[ offset +  80 ] & 0xFF );
+			m[10] |= ((long) b[ offset +  81 ] & 0xFF ) <<  8;
+			m[10] |= ((long) b[ offset +  82 ] & 0xFF ) << 16;
+			m[10] |= ((long) b[ offset +  83 ] & 0xFF ) << 24;
+			m[10] |= ((long) b[ offset +  84 ] & 0xFF ) << 32;
+			m[10] |= ((long) b[ offset +  85 ] & 0xFF ) << 40;
+			m[10] |= ((long) b[ offset +  86 ] & 0xFF ) << 48;
+			m[10] |= ((long) b[ offset +  87 ]        ) << 56;
 
-			state.m[11]  = ((long) b[ offset +  88 ] & 0xFF );
-			state.m[11] |= ((long) b[ offset +  89 ] & 0xFF ) <<  8;
-			state.m[11] |= ((long) b[ offset +  90 ] & 0xFF ) << 16;
-			state.m[11] |= ((long) b[ offset +  91 ] & 0xFF ) << 24;
-			state.m[11] |= ((long) b[ offset +  92 ] & 0xFF ) << 32;
-			state.m[11] |= ((long) b[ offset +  93 ] & 0xFF ) << 40;
-			state.m[11] |= ((long) b[ offset +  94 ] & 0xFF ) << 48;
-			state.m[11] |= ((long) b[ offset +  95 ]        ) << 56;
+			m[11]  = ((long) b[ offset +  88 ] & 0xFF );
+			m[11] |= ((long) b[ offset +  89 ] & 0xFF ) <<  8;
+			m[11] |= ((long) b[ offset +  90 ] & 0xFF ) << 16;
+			m[11] |= ((long) b[ offset +  91 ] & 0xFF ) << 24;
+			m[11] |= ((long) b[ offset +  92 ] & 0xFF ) << 32;
+			m[11] |= ((long) b[ offset +  93 ] & 0xFF ) << 40;
+			m[11] |= ((long) b[ offset +  94 ] & 0xFF ) << 48;
+			m[11] |= ((long) b[ offset +  95 ]        ) << 56;
 
-			state.m[12]  = ((long) b[ offset +  96 ] & 0xFF );
-			state.m[12] |= ((long) b[ offset +  97 ] & 0xFF ) <<  8;
-			state.m[12] |= ((long) b[ offset +  98 ] & 0xFF ) << 16;
-			state.m[12] |= ((long) b[ offset +  99 ] & 0xFF ) << 24;
-			state.m[12] |= ((long) b[ offset + 100 ] & 0xFF ) << 32;
-			state.m[12] |= ((long) b[ offset + 101 ] & 0xFF ) << 40;
-			state.m[12] |= ((long) b[ offset + 102 ] & 0xFF ) << 48;
-			state.m[12] |= ((long) b[ offset + 103 ]        ) << 56;
+			m[12]  = ((long) b[ offset +  96 ] & 0xFF );
+			m[12] |= ((long) b[ offset +  97 ] & 0xFF ) <<  8;
+			m[12] |= ((long) b[ offset +  98 ] & 0xFF ) << 16;
+			m[12] |= ((long) b[ offset +  99 ] & 0xFF ) << 24;
+			m[12] |= ((long) b[ offset + 100 ] & 0xFF ) << 32;
+			m[12] |= ((long) b[ offset + 101 ] & 0xFF ) << 40;
+			m[12] |= ((long) b[ offset + 102 ] & 0xFF ) << 48;
+			m[12] |= ((long) b[ offset + 103 ]        ) << 56;
 
-			state.m[13]  = ((long) b[ offset + 104 ] & 0xFF );
-			state.m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;
-			state.m[13] |= ((long) b[ offset + 106 ] & 0xFF ) << 16;
-			state.m[13] |= ((long) b[ offset + 107 ] & 0xFF ) << 24;
-			state.m[13] |= ((long) b[ offset + 108 ] & 0xFF ) << 32;
-			state.m[13] |= ((long) b[ offset + 109 ] & 0xFF ) << 40;
-			state.m[13] |= ((long) b[ offset + 110 ] & 0xFF ) << 48;
-			state.m[13] |= ((long) b[ offset + 111 ]        ) << 56;
+			m[13]  = ((long) b[ offset + 104 ] & 0xFF );
+			m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;
+			m[13] |= ((long) b[ offset + 106 ] & 0xFF ) << 16;
+			m[13] |= ((long) b[ offset + 107 ] & 0xFF ) << 24;
+			m[13] |= ((long) b[ offset + 108 ] & 0xFF ) << 32;
+			m[13] |= ((long) b[ offset + 109 ] & 0xFF ) << 40;
+			m[13] |= ((long) b[ offset + 110 ] & 0xFF ) << 48;
+			m[13] |= ((long) b[ offset + 111 ]        ) << 56;
 
-			state.m[14]  = ((long) b[ offset + 112 ] & 0xFF );
-			state.m[14] |= ((long) b[ offset + 113 ] & 0xFF ) <<  8;
-			state.m[14] |= ((long) b[ offset + 114 ] & 0xFF ) << 16;
-			state.m[14] |= ((long) b[ offset + 115 ] & 0xFF ) << 24;
-			state.m[14] |= ((long) b[ offset + 116 ] & 0xFF ) << 32;
-			state.m[14] |= ((long) b[ offset + 117 ] & 0xFF ) << 40;
-			state.m[14] |= ((long) b[ offset + 118 ] & 0xFF ) << 48;
-			state.m[14] |= ((long) b[ offset + 119 ]        ) << 56;
+			m[14]  = ((long) b[ offset + 112 ] & 0xFF );
+			m[14] |= ((long) b[ offset + 113 ] & 0xFF ) <<  8;
+			m[14] |= ((long) b[ offset + 114 ] & 0xFF ) << 16;
+			m[14] |= ((long) b[ offset + 115 ] & 0xFF ) << 24;
+			m[14] |= ((long) b[ offset + 116 ] & 0xFF ) << 32;
+			m[14] |= ((long) b[ offset + 117 ] & 0xFF ) << 40;
+			m[14] |= ((long) b[ offset + 118 ] & 0xFF ) << 48;
+			m[14] |= ((long) b[ offset + 119 ]        ) << 56;
 
-			state.m[15]  = ((long) b[ offset + 120 ] & 0xFF );
-			state.m[15] |= ((long) b[ offset + 121 ] & 0xFF ) <<  8;
-			state.m[15] |= ((long) b[ offset + 122 ] & 0xFF ) << 16;
-			state.m[15] |= ((long) b[ offset + 123 ] & 0xFF ) << 24;
-			state.m[15] |= ((long) b[ offset + 124 ] & 0xFF ) << 32;
-			state.m[15] |= ((long) b[ offset + 125 ] & 0xFF ) << 40;
-			state.m[15] |= ((long) b[ offset + 126 ] & 0xFF ) << 48;
-			state.m[15] |= ((long) b[ offset + 127 ]        ) << 56;
+			m[15]  = ((long) b[ offset + 120 ] & 0xFF );
+			m[15] |= ((long) b[ offset + 121 ] & 0xFF ) <<  8;
+			m[15] |= ((long) b[ offset + 122 ] & 0xFF ) << 16;
+			m[15] |= ((long) b[ offset + 123 ] & 0xFF ) << 24;
+			m[15] |= ((long) b[ offset + 124 ] & 0xFF ) << 32;
+			m[15] |= ((long) b[ offset + 125 ] & 0xFF ) << 40;
+			m[15] |= ((long) b[ offset + 126 ] & 0xFF ) << 48;
+			m[15] |= ((long) b[ offset + 127 ]        ) << 56;
 //			Debug.dumpArray("m @ compress", m);
 //
 //			Debug.dumpArray("h @ compress", h);
@@ -767,22 +768,26 @@ public interface Blake2b {
 //			Debug.dumpArray("f @ compress", f);
 
 			// set v registers
-			state.v[ 0] = state.h[ 0];
-			state.v[ 1] = state.h[ 1];
-			state.v[ 2] = state.h[ 2];
-			state.v[ 3] = state.h[ 3];
-			state.v[ 4] = state.h[ 4];
-			state.v[ 5] = state.h[ 5];
-			state.v[ 6] = state.h[ 6];
-			state.v[ 7] = state.h[ 7];
-			state.v[ 8] =           0x6a09e667f3bcc908L;
-			state.v[ 9] =           0xbb67ae8584caa73bL;
-			state.v[10] =           0x3c6ef372fe94f82bL;
-			state.v[11] =           0xa54ff53a5f1d36f1L;
-			state.v[12] = state.t [ 0 ] ^ 0x510e527fade682d1L;
-			state.v[13] = state.t [ 1 ] ^ 0x9b05688c2b3e6c1fL;
-			state.v[14] = state.f [ 0 ] ^ 0x1f83d9abfb41bd6bL;
-			state.v[15] = state.f [ 1 ] ^ 0x5be0cd19137e2179L;
+			final   long[]  v = state.v;
+			final   long[]  h = state.h;
+			final   long[]  t = state.t;
+			final   long[]  f = state.f;
+			v[ 0] = h[ 0];
+			v[ 1] = h[ 1];
+			v[ 2] = h[ 2];
+			v[ 3] = h[ 3];
+			v[ 4] = h[ 4];
+			v[ 5] = h[ 5];
+			v[ 6] = h[ 6];
+			v[ 7] = h[ 7];
+			v[ 8] =           0x6a09e667f3bcc908L;
+			v[ 9] =           0xbb67ae8584caa73bL;
+			v[10] =           0x3c6ef372fe94f82bL;
+			v[11] =           0xa54ff53a5f1d36f1L;
+			v[12] = t [ 0 ] ^ 0x510e527fade682d1L;
+			v[13] = t [ 1 ] ^ 0x9b05688c2b3e6c1fL;
+			v[14] = f [ 0 ] ^ 0x1f83d9abfb41bd6bL;
+			v[15] = f [ 1 ] ^ 0x5be0cd19137e2179L;
 
 //			Debug.dumpArray("v @ compress", v);
 			// the rounds
@@ -791,134 +796,134 @@ public interface Blake2b {
 
 				/**		G (r, 0, 0, 4,  8, 12); */
 
-				state.v[ 0] = state.v[ 0] + state.v[ 4] + state.m [sig_g00[r]];
-				state.v[12] ^= state.v[ 0];
-				state.v[12] = ( state.v[12] << 32 ) | ( state.v[12] >>> 32 );
-				state.v[ 8] = state.v[ 8] + state.v[12];
-				state.v[ 4] ^= state.v[ 8];
-				state.v[ 4] = ( state.v[ 4] >>> 24 ) | ( state.v[ 4] << 40 );
-				state.v[ 0] = state.v[ 0] + state.v[ 4] + state.m [sig_g01[r]];
-				state.v[12] ^= state.v[ 0];
-				state.v[12] = ( state.v[12] >>> 16 ) | ( state.v[12] << 48 );
-				state.v[ 8] = state.v[ 8] + state.v[12];
-				state.v[ 4] ^= state.v[ 8];
-				state.v[ 4] = ( state.v[ 4] << 1 ) | ( state.v[ 4] >>> 63 );
+				v[ 0] = v[ 0] + v[ 4] + m [sig_g00[r]];
+				v[12] ^= v[ 0];
+				v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
+				v[ 8] = v[ 8] + v[12];
+				v[ 4] ^= v[ 8];
+				v[ 4] = ( v[ 4] >>> 24 ) | ( v[ 4] << 40 );
+				v[ 0] = v[ 0] + v[ 4] + m [sig_g01[r]];
+				v[12] ^= v[ 0];
+				v[12] = ( v[12] >>> 16 ) | ( v[12] << 48 );
+				v[ 8] = v[ 8] + v[12];
+				v[ 4] ^= v[ 8];
+				v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 
 				/**		G (r, 1, 1, 5,  9, 13); */
 
-				state.v[ 1] = state.v[ 1] + state.v[ 5] + state.m[sig_g10[r]];
-				state.v[13] ^= state.v[ 1];
-				state.v[13] = ( state.v[13] << 32 ) | ( state.v[13] >>> 32 );
-				state.v[ 9] = state.v[ 9] + state.v[13];
-				state.v[ 5] ^= state.v[ 9];
-				state.v[ 5] = ( state.v[ 5] >>> 24 ) | ( state.v[ 5] << 40 );
-				state.v[ 1] = state.v[ 1] + state.v[ 5] + state.m[sig_g11[r]];
-				state.v[13] ^= state.v[ 1];
-				state.v[13] = ( state.v[13] >>> 16 ) | ( state.v[13] << 48 );
-				state.v[ 9] = state.v[ 9] + state.v[13];
-				state.v[ 5] ^= state.v[ 9];
-				state.v[ 5] = ( state.v[ 5] << 1 ) | ( state.v[ 5] >>> 63 );
+				v[ 1] = v[ 1] + v[ 5] + m[sig_g10[r]];
+				v[13] ^= v[ 1];
+				v[13] = ( v[13] << 32 ) | ( v[13] >>> 32 );
+				v[ 9] = v[ 9] + v[13];
+				v[ 5] ^= v[ 9];
+				v[ 5] = ( v[ 5] >>> 24 ) | ( v[ 5] << 40 );
+				v[ 1] = v[ 1] + v[ 5] + m[sig_g11[r]];
+				v[13] ^= v[ 1];
+				v[13] = ( v[13] >>> 16 ) | ( v[13] << 48 );
+				v[ 9] = v[ 9] + v[13];
+				v[ 5] ^= v[ 9];
+				v[ 5] = ( v[ 5] << 1 ) | ( v[ 5] >>> 63 );
 
 				/**		G (r, 2, 2, 6, 10, 14); */
 
-				state.v[ 2] = state.v[ 2] + state.v[ 6] + state.m[sig_g20[r]];
-				state.v[14] ^= state.v[ 2];
-				state.v[14] = ( state.v[14] << 32 ) | ( state.v[14] >>> 32 );
-				state.v[10] = state.v[10] + state.v[14];
-				state.v[ 6] ^= state.v[10];
-				state.v[ 6] = ( state.v[ 6] >>> 24 ) | ( state.v[ 6] << 40 );
-				state.v[ 2] = state.v[ 2] + state.v[ 6] + state.m[sig_g21[r]];
-				state.v[14] ^= state.v[ 2];
-				state.v[14] = ( state.v[14] >>> 16 ) | ( state.v[14] << 48 );
-				state.v[10] = state.v[10] + state.v[14];
-				state.v[ 6] ^= state.v[10];
-				state.v[ 6] = ( state.v[ 6] << 1 ) | ( state.v[ 6] >>> 63 );
+				v[ 2] = v[ 2] + v[ 6] + m[sig_g20[r]];
+				v[14] ^= v[ 2];
+				v[14] = ( v[14] << 32 ) | ( v[14] >>> 32 );
+				v[10] = v[10] + v[14];
+				v[ 6] ^= v[10];
+				v[ 6] = ( v[ 6] >>> 24 ) | ( v[ 6] << 40 );
+				v[ 2] = v[ 2] + v[ 6] + m[sig_g21[r]];
+				v[14] ^= v[ 2];
+				v[14] = ( v[14] >>> 16 ) | ( v[14] << 48 );
+				v[10] = v[10] + v[14];
+				v[ 6] ^= v[10];
+				v[ 6] = ( v[ 6] << 1 ) | ( v[ 6] >>> 63 );
 
 				/**		G (r, 3, 3, 7, 11, 15); */
 
-				state.v[ 3] = state.v[ 3] + state.v[ 7] + state.m[sig_g30[r]];
-				state.v[15] ^= state.v[ 3];
-				state.v[15] = ( state.v[15] << 32 ) | ( state.v[15] >>> 32 );
-				state.v[11] = state.v[11] + state.v[15];
-				state.v[ 7] ^= state.v[11];
-				state.v[ 7] = ( state.v[ 7] >>> 24 ) | ( state.v[ 7] << 40 );
-				state.v[ 3] = state.v[ 3] + state.v[ 7] + state.m[sig_g31[r]];
-				state.v[15] ^= state.v[ 3];
-				state.v[15] = ( state.v[15] >>> 16 ) | ( state.v[15] << 48 );
-				state.v[11] = state.v[11] + state.v[15];
-				state.v[ 7] ^= state.v[11];
-				state.v[ 7] = ( state.v[ 7] << 1 ) | ( state.v[ 7] >>> 63 );
+				v[ 3] = v[ 3] + v[ 7] + m[sig_g30[r]];
+				v[15] ^= v[ 3];
+				v[15] = ( v[15] << 32 ) | ( v[15] >>> 32 );
+				v[11] = v[11] + v[15];
+				v[ 7] ^= v[11];
+				v[ 7] = ( v[ 7] >>> 24 ) | ( v[ 7] << 40 );
+				v[ 3] = v[ 3] + v[ 7] + m[sig_g31[r]];
+				v[15] ^= v[ 3];
+				v[15] = ( v[15] >>> 16 ) | ( v[15] << 48 );
+				v[11] = v[11] + v[15];
+				v[ 7] ^= v[11];
+				v[ 7] = ( v[ 7] << 1 ) | ( v[ 7] >>> 63 );
 
 				/**		G (r, 4, 0, 5, 10, 15); */
 
-				state.v[ 0] = state.v[ 0] + state.v[ 5] + state.m[sig_g40[r]];
-				state.v[15] ^= state.v[ 0];
-				state.v[15] = ( state.v[15] << 32 ) | ( state.v[15] >>> 32 );
-				state.v[10] = state.v[10] + state.v[15];
-				state.v[ 5] ^= state.v[10];
-				state.v[ 5] = ( state.v[ 5] >>> 24 ) | ( state.v[ 5] << 40 );
-				state.v[ 0] = state.v[ 0] + state.v[ 5] + state.m[sig_g41[r]];
-				state.v[15] ^= state.v[ 0];
-				state.v[15] = ( state.v[15] >>> 16 ) | ( state.v[15] << 48 );
-				state.v[10] = state.v[10] + state.v[15];
-				state.v[ 5] ^= state.v[10];
-				state.v[ 5] = ( state.v[ 5] << 1 ) | ( state.v[ 5] >>> 63 );
+				v[ 0] = v[ 0] + v[ 5] + m[sig_g40[r]];
+				v[15] ^= v[ 0];
+				v[15] = ( v[15] << 32 ) | ( v[15] >>> 32 );
+				v[10] = v[10] + v[15];
+				v[ 5] ^= v[10];
+				v[ 5] = ( v[ 5] >>> 24 ) | ( v[ 5] << 40 );
+				v[ 0] = v[ 0] + v[ 5] + m[sig_g41[r]];
+				v[15] ^= v[ 0];
+				v[15] = ( v[15] >>> 16 ) | ( v[15] << 48 );
+				v[10] = v[10] + v[15];
+				v[ 5] ^= v[10];
+				v[ 5] = ( v[ 5] << 1 ) | ( v[ 5] >>> 63 );
 
 				/**		G (r, 5, 1, 6, 11, 12); */
 
-				state.v[ 1] = state.v[ 1] + state.v[ 6] + state.m[sig_g50[r]];
-				state.v[12] ^= state.v[ 1];
-				state.v[12] = ( state.v[12] << 32 ) | ( state.v[12] >>> 32 );
-				state.v[11] = state.v[11] + state.v[12];
-				state.v[ 6] ^= state.v[11];
-				state.v[ 6] = ( state.v[ 6] >>> 24 ) | ( state.v[ 6] << 40 );
-				state.v[ 1] = state.v[ 1] + state.v[ 6] + + state.m[sig_g51[r]];
-				state.v[12] ^= state.v[ 1];
-				state.v[12] = ( state.v[12] >>> 16 ) | ( state.v[12] << 48 );
-				state.v[11] = state.v[11] + state.v[12];
-				state.v[ 6] ^= state.v[11];
-				state.v[ 6] = ( state.v[ 6] << 1 ) | ( state.v[ 6] >>> 63 );
+				v[ 1] = v[ 1] + v[ 6] + m[sig_g50[r]];
+				v[12] ^= v[ 1];
+				v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
+				v[11] = v[11] + v[12];
+				v[ 6] ^= v[11];
+				v[ 6] = ( v[ 6] >>> 24 ) | ( v[ 6] << 40 );
+				v[ 1] = v[ 1] + v[ 6] + + m[sig_g51[r]];
+				v[12] ^= v[ 1];
+				v[12] = ( v[12] >>> 16 ) | ( v[12] << 48 );
+				v[11] = v[11] + v[12];
+				v[ 6] ^= v[11];
+				v[ 6] = ( v[ 6] << 1 ) | ( v[ 6] >>> 63 );
 
 				/**		G (r, 6, 2, 7,  8, 13); */
 
-				state.v[ 2] = state.v[ 2] + state.v[ 7] + state.m[sig_g60[r]];
-				state.v[13] ^= state.v[ 2];
-				state.v[13] = ( state.v[13] << 32 ) | ( state.v[13] >>> 32 );
-				state.v[ 8] = state.v[ 8] + state.v[13];
-				state.v[ 7] ^= state.v[ 8];
-				state.v[ 7] = ( state.v[ 7] >>> 24 ) | ( state.v[ 7] << 40 );
-				state.v[ 2] = state.v[ 2] + state.v[ 7] + state.m[sig_g61[r]];
-				state.v[13] ^= state.v[ 2];
-				state.v[13] = ( state.v[13] >>> 16 ) | ( state.v[13] << 48 );
-				state.v[ 8] = state.v[ 8] + state.v[13];
-				state.v[ 7] ^= state.v[ 8];
-				state.v[ 7] = ( state.v[ 7] << 1 ) | ( state.v[ 7] >>> 63 );
+				v[ 2] = v[ 2] + v[ 7] + m[sig_g60[r]];
+				v[13] ^= v[ 2];
+				v[13] = ( v[13] << 32 ) | ( v[13] >>> 32 );
+				v[ 8] = v[ 8] + v[13];
+				v[ 7] ^= v[ 8];
+				v[ 7] = ( v[ 7] >>> 24 ) | ( v[ 7] << 40 );
+				v[ 2] = v[ 2] + v[ 7] + m[sig_g61[r]];
+				v[13] ^= v[ 2];
+				v[13] = ( v[13] >>> 16 ) | ( v[13] << 48 );
+				v[ 8] = v[ 8] + v[13];
+				v[ 7] ^= v[ 8];
+				v[ 7] = ( v[ 7] << 1 ) | ( v[ 7] >>> 63 );
 
 				/**		G (r, 7, 3, 4,  9, 14); */
 
-				state.v[ 3] = state.v[ 3] + state.v[ 4] + state.m[sig_g70[r]];
-				state.v[14] ^= state.v[ 3];
-				state.v[14] = ( state.v[14] << 32 ) | ( state.v[14] >>> 32 );
-				state.v[ 9] = state.v[ 9] + state.v[14];
-				state.v[ 4] ^= state.v[ 9];
-				state.v[ 4] = ( state.v[ 4] >>> 24 ) | ( state.v[ 4] << 40 );
-				state.v[ 3] = state.v[ 3] + state.v[ 4] + state.m[sig_g71[r]];
-				state.v[14] ^= state.v[ 3];
-				state.v[14] = ( state.v[14] >>> 16 ) | ( state.v[14] << 48 );
-				state.v[ 9] = state.v[ 9] + state.v[14];
-				state.v[ 4] ^= state.v[ 9];
-				state.v[ 4] = ( state.v[ 4] << 1 ) | ( state.v[ 4] >>> 63 );
+				v[ 3] = v[ 3] + v[ 4] + m[sig_g70[r]];
+				v[14] ^= v[ 3];
+				v[14] = ( v[14] << 32 ) | ( v[14] >>> 32 );
+				v[ 9] = v[ 9] + v[14];
+				v[ 4] ^= v[ 9];
+				v[ 4] = ( v[ 4] >>> 24 ) | ( v[ 4] << 40 );
+				v[ 3] = v[ 3] + v[ 4] + m[sig_g71[r]];
+				v[14] ^= v[ 3];
+				v[14] = ( v[14] >>> 16 ) | ( v[14] << 48 );
+				v[ 9] = v[ 9] + v[14];
+				v[ 4] ^= v[ 9];
+				v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 			}
 
 			// Update state vector h
-			state.h[ 0] ^= state.v[0] ^ state.v[8];
-			state.h[ 1] ^= state.v[1] ^ state.v[9];
-			state.h[ 2] ^= state.v[2] ^ state.v[10];
-			state.h[ 3] ^= state.v[3] ^ state.v[11];
-			state.h[ 4] ^= state.v[4] ^ state.v[12];
-			state.h[ 5] ^= state.v[5] ^ state.v[13];
-			state.h[ 6] ^= state.v[6] ^ state.v[14];
-			state.h[ 7] ^= state.v[7] ^ state.v[15];
+			h[ 0] ^= v[0] ^ v[8];
+			h[ 1] ^= v[1] ^ v[9];
+			h[ 2] ^= v[2] ^ v[10];
+			h[ 3] ^= v[3] ^ v[11];
+			h[ 4] ^= v[4] ^ v[12];
+			h[ 5] ^= v[5] ^ v[13];
+			h[ 6] ^= v[6] ^ v[14];
+			h[ 7] ^= v[7] ^ v[15];
 
 //			Debug.dumpArray("v @ compress end", v);
 //			Debug.dumpArray("h @ compress end", h);
@@ -1011,7 +1016,7 @@ public interface Blake2b {
 			}
 			public static int readInt (final byte[] b, int off) {
 				int v0
-					= ((int)b [ off++ ] & 0xFF );
+						= ((int)b [ off++ ] & 0xFF );
 				v0 |= ((int)b [ off++ ] & 0xFF ) <<  8;
 				v0 |= ((int)b [ off++ ] & 0xFF ) << 16;
 				v0 |= ((int)b [ off   ]        ) << 24;
@@ -1020,7 +1025,7 @@ public interface Blake2b {
 			/** Little endian - byte[] to long */
 			public static long readLong (final byte[] b, int off) {
 				long v0
-					= ((long)b [ off++ ] & 0xFF );
+						= ((long)b [ off++ ] & 0xFF );
 				v0 |= ((long)b [ off++ ] & 0xFF ) <<  8;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 16;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 24;
