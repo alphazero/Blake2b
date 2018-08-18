@@ -540,10 +540,13 @@ public interface Blake2b {
 		/** {@inheritDoc} */
 		@Override final public void digest(byte[] output, int off, int len) {
 			// zero pad last block; set last block flags; and compress
-			System.arraycopy( zeropad, 0, state.buffer, state.buflen, Spec.block_bytes - state.buflen);
-			if(state.buflen > 0) {
-				this.state.t[0] += state.buflen;
-				this.state.t[1] += this.state.t[0] == 0 ? 1 : 0;
+			System.arraycopy( zeropad, 0, buffer, buflen, Spec.block_bytes - buflen);
+			if(buflen > 0) {
+				this.t[0] += buflen;
+				/* FIX ISSUE-1 message lengths exceeding 2^64 - credit Axel von dem Bruch (Beloumi@github) */
+//				this.t[1] += this.t[0] == 0 ? 1 : 0;
+				this.t[1] += (this.t[0] < 0 && buflen > -this.t[0]) ? 1 : 0;
+				/* FIX ISSUE-1 END */
 			}
 
 			this.state.f[ flag.last_block ] = 0xFFFFFFFFFFFFFFFFL;
