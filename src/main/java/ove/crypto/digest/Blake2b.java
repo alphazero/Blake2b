@@ -443,7 +443,10 @@ public interface Blake2b {
 			System.arraycopy( zeropad, 0, buffer, buflen, Spec.block_bytes - buflen);
 			if(buflen > 0) {
 				this.t[0] += buflen;
-				this.t[1] += this.t[0] == 0 ? 1 : 0;
+				/* FIX ISSUE-1 message lengths exceeding 2^64 - credit Axel von dem Bruch (Beloumi@github) */
+//				this.t[1] += this.t[0] == 0 ? 1 : 0;
+				this.t[1] += (this.t[0] < 0 && buflen > -this.t[0]) ? 1 : 0;
+				/* FIX ISSUE-1 END */
 			}
 
 			this.f[ flag.last_block ] = 0xFFFFFFFFFFFFFFFFL;
