@@ -1,13 +1,8 @@
 # About
-Blake2b is a Java implementation of the **BLAKE2b** cryptographic hash function created by **Jean-Philippe Aumasson**, **Samuel Neves**, **Zooko Wilcox-O'Hearn**, and
+Blake2b is a high performance Java implementation of the **BLAKE2b** cryptographic hash function created by **Jean-Philippe Aumasson**, **Samuel Neves**, **Zooko Wilcox-O'Hearn**, and
 **Christian Winnerlein**. (See [Blake2 project site](https://blake2.net) for details and authoritative information about the BLAKE2b digest.)
 
 This implementation was made with close attention to the reference `C` implementation of **Samuel Neves** (<sneves@dei.uc.pt>). The quite excellent [`Go` implementation](github.com/dchest/blake2b) by **Dmitry Chestnykh** was also reviewed and referenced for optimization inspirations.
-
-## Motivation
-I required a **high performance** `SHA1` replacement with incremental hash capabilities for a pet project (a content addressable distributed temporal DB). BLAKE2b seemed to fit the bill and here we are.  
-
-"Cryptographic security" beyond collision resistance was/is a none concern, and I have zero/0 relevant subject matter expertise. For example, I have no clue as to how one would erase traces of the *key* used with the `Mac` feature of the algorithm from the JVM heap without resorting to `JNI/JNA` (?) and no such attempt has been made in this implementation. ***Fair warning, please do note it***.
 
 ## Fidelity
 This implementation is provided with a suite of tests miminally covering the reference implementation `KAT` and `Keyed-KAT`, covering basic digest and MAC features (respectively). These may be inspected in the `src/test/` source fork of this repository.
@@ -15,7 +10,7 @@ This implementation is provided with a suite of tests miminally covering the ref
 Additionally, a `C` test program emitting a tree based hash was used to confirm the `Blake2b.Tree` output. Augmenting the `C` test program to test *salt*, and *personal* is on the TODO list. But do note that these 2 features have ***not*** been tested yet, though the confidence level for these is fairly maximal. (It is on the TODO list.)  
 
 # License
-Written by Joubin Mohammad Houshyar, 2014.
+Written by Joubin Mohammad Houshyar, 2014-2018
 
 To the extent possible under law, the author has dedicated all copyright
 and related and neighboring rights to this software to the public domain
@@ -209,16 +204,29 @@ The `Blake2b.Tree` class provides a convenient semantic `API` for incremental ha
     final byte[] hash = digest.digest();
 
 # Performance
-Performance as of now is generally in par with `JRE`'s `SHA1`, however `SHA1` appears to be a bit faster in some cases. The relative performance between these two digests is also somewhat sensitive to the input data size. `JRE`'s `MD5` is significantly faster than both. 
 
-The hotspot is, as expected, is in the `compress()` function of the `Blake2b.Engine`. Given the waterfall data flow dependency of this critical section, there is little room for optimization by the JIT.
+Performance (as measured by hash function throughput) is significantly better than `JRE`'s `SHA1`. `JRE`'s `MD5` remains faster than both. 
 
-So, given that this function is nearly fully inlined (per above JIT considerations), it would appear that the aggrevating issue is the necessity for decoding of 64bit (long) values as `byte[]`s. (In the reference `C` implementation on platforms -- with native little-endian representation of integer values -- this en/decoding is a simple matter of casting to/from `void*` from/to `uint64_t*`.)
+The hotspot is, as expected, is in the `compress()` function of the `Blake2b.Engine`. There appears to be a trade off between function size and in-lining of the compress rounds. The current realization of the compress uses individual round functions, per extensive benchmarking of various approaches to the compress function composition. It seems that the JIT compiler is sensitive to function size, given that merging of the round functions degrades performance.
+
+## Relative benchmark results
+
+Using the (provided) `ove.crypto.digest.Bench` utility class, on an `MacBook Air (OS X 10.13.14)` with `1.3 GHz Intel Core i5` with `Java HotSpot(TM) 64-Bit Server VM (build 25.181-b13, mixed mode)` these are the relative performance numbers. These number hold fairly well regardless of the message size.
+
+    digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
+    md5      |     100000 |          4096 |     1439390970 |          284.564989
+
+    digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
+    blake2b  |     100000 |          4096 |     1601343421 |          255.785300 
+
+    digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
+    sha1     |     100000 |          4096 |     2154751350 |          190.091570
+
+To run the bench, try
+
+    java -cp target/ove.blake2b-alpha.0.jar ove.crypto.digest.Bench -n <message size> -i <iterations> -d <digest>
 
 ## Further possible optimizations
-
-### Unrolling the Rounds loop
-For the current `byte[]` (object) based implementation, a final unrolling of the `G` rounds can be attempted. This is on the near-term TODO list.
 
 ### Using Hardcoded Array Offseting
 `Compress()` is currently handed an array with an offset for mapping of the compression buffer from `update()` and `digest()`. So mapping of the compression input buffer to the `m[]` vector incurrs the cost of `128` offset calculations (e.g. `m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;`). The alternative would be to incurr the `System.arraycopy` equivalent of the 2 `memcpy` calls in `update` function and pass a fixed offset to `compress()` and use hardcoded offsets (e.g. `m[13] |= ((long) b[ 105 ] & 0xFF ) <<  8;`).
