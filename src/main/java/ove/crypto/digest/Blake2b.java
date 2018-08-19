@@ -85,21 +85,21 @@ public interface Blake2b {
 				0x5be0cd19137e2179L
 		};
 
-		/** sigma per spec used in compress func generation - for reference only */
-		static byte[][] sigma = {
-				{  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 } ,
-				{ 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 } ,
-				{ 11,  8, 12,  0,  5,  2, 15, 13, 10, 14,  3,  6,  7,  1,  9,  4 } ,
-				{  7,  9,  3,  1, 13, 12, 11, 14,  2,  6,  5, 10,  4,  0, 15,  8 } ,
-				{  9,  0,  5,  7,  2,  4, 10, 15, 14,  1, 11, 12,  6,  8,  3, 13 } ,
-				{  2, 12,  6, 10,  0, 11,  8,  3,  4, 13,  7,  5, 15, 14,  1,  9 } ,
-				{ 12,  5,  1, 15, 14, 13,  4, 10,  0,  7,  6,  3,  9,  2,  8, 11 } ,
-				{ 13, 11,  7, 14, 12,  1,  3,  9,  5,  0, 15,  4,  8,  6,  2, 10 } ,
-				{  6, 15, 14,  9, 11,  3,  0,  8, 12,  2, 13,  7,  1,  4, 10,  5 } ,
-				{ 10,  2,  8,  4,  7,  6,  1,  5, 15, 11,  9, 14,  3, 12, 13 , 0 } ,
-				{  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 } ,
-				{ 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
-		};
+//		/** sigma per spec used in compress func generation - for reference only */
+//		static byte[][] sigma = {
+//				{  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 } ,
+//				{ 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 } ,
+//				{ 11,  8, 12,  0,  5,  2, 15, 13, 10, 14,  3,  6,  7,  1,  9,  4 } ,
+//				{  7,  9,  3,  1, 13, 12, 11, 14,  2,  6,  5, 10,  4,  0, 15,  8 } ,
+//				{  9,  0,  5,  7,  2,  4, 10, 15, 14,  1, 11, 12,  6,  8,  3, 13 } ,
+//				{  2, 12,  6, 10,  0, 11,  8,  3,  4, 13,  7,  5, 15, 14,  1,  9 } ,
+//				{ 12,  5,  1, 15, 14, 13,  4, 10,  0,  7,  6,  3,  9,  2,  8, 11 } ,
+//				{ 13, 11,  7, 14, 12,  1,  3,  9,  5,  0, 15,  4,  8,  6,  2, 10 } ,
+//				{  6, 15, 14,  9, 11,  3,  0,  8, 12,  2, 13,  7,  1,  4, 10,  5 } ,
+//				{ 10,  2,  8,  4,  7,  6,  1,  5, 15, 11,  9, 14,  3, 12, 13 , 0 } ,
+//				{  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 } ,
+//				{ 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
+//		};
 	}
 
 	// ---------------------------------------------------------------------
@@ -584,156 +584,152 @@ public interface Blake2b {
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
-			final long[] m = state.m; // dereference state once - perf. critical [typical for all registers in kernel]
-			// REVU: some small gains still possible here.
-			m[ 0]  = ((long) b[ offset       ] & 0xFF );
-			m[ 0] |= ((long) b[ offset +   1 ] & 0xFF ) <<  8;
-			m[ 0] |= ((long) b[ offset +   2 ] & 0xFF ) << 16;
-			m[ 0] |= ((long) b[ offset +   3 ] & 0xFF ) << 24;
-			m[ 0] |= ((long) b[ offset +   4 ] & 0xFF ) << 32;
-			m[ 0] |= ((long) b[ offset +   5 ] & 0xFF ) << 40;
-			m[ 0] |= ((long) b[ offset +   6 ] & 0xFF ) << 48;
-			m[ 0] |= ((long) b[ offset +   7 ]        ) << 56;
+			// the local variable gymnastics significantly improve performance.
+			final long[] m = state.m;
+			long mx;
+			mx  = ((long) b[ offset       ] & 0xFF );
+			mx |= ((long) b[ offset +   1 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +   2 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +   3 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +   4 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +   5 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +   6 ] & 0xFF ) << 48;
+			m[0] = mx | ((long) b[ offset +   7 ] )  << 56;
 
-			m[ 1]  = ((long) b[ offset +   8 ] & 0xFF );
-			m[ 1] |= ((long) b[ offset +   9 ] & 0xFF ) <<  8;
-			m[ 1] |= ((long) b[ offset +  10 ] & 0xFF ) << 16;
-			m[ 1] |= ((long) b[ offset +  11 ] & 0xFF ) << 24;
-			m[ 1] |= ((long) b[ offset +  12 ] & 0xFF ) << 32;
-			m[ 1] |= ((long) b[ offset +  13 ] & 0xFF ) << 40;
-			m[ 1] |= ((long) b[ offset +  14 ] & 0xFF ) << 48;
-			m[ 1] |= ((long) b[ offset +  15 ]        ) << 56;
+			mx  = ((long) b[ offset +   8 ] & 0xFF );
+			mx |= ((long) b[ offset +   9 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  10 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  11 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  12 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  13 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  14 ] & 0xFF ) << 48;
+			m[1] = mx | ((long) b[ offset +  15 ] )  << 56;
 
-			m[ 2]  = ((long) b[ offset +  16 ] & 0xFF );
-			m[ 2] |= ((long) b[ offset +  17 ] & 0xFF ) <<  8;
-			m[ 2] |= ((long) b[ offset +  18 ] & 0xFF ) << 16;
-			m[ 2] |= ((long) b[ offset +  19 ] & 0xFF ) << 24;
-			m[ 2] |= ((long) b[ offset +  20 ] & 0xFF ) << 32;
-			m[ 2] |= ((long) b[ offset +  21 ] & 0xFF ) << 40;
-			m[ 2] |= ((long) b[ offset +  22 ] & 0xFF ) << 48;
-			m[ 2] |= ((long) b[ offset +  23 ]        ) << 56;
+			mx  = ((long) b[ offset +  16 ] & 0xFF );
+			mx |= ((long) b[ offset +  17 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  18 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  19 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  20 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  21 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  22 ] & 0xFF ) << 48;
+			m[2] = mx | ((long) b[ offset +  23 ] )  << 56;
 
-			m[ 3]  = ((long) b[ offset +  24 ] & 0xFF );
-			m[ 3] |= ((long) b[ offset +  25 ] & 0xFF ) <<  8;
-			m[ 3] |= ((long) b[ offset +  26 ] & 0xFF ) << 16;
-			m[ 3] |= ((long) b[ offset +  27 ] & 0xFF ) << 24;
-			m[ 3] |= ((long) b[ offset +  28 ] & 0xFF ) << 32;
-			m[ 3] |= ((long) b[ offset +  29 ] & 0xFF ) << 40;
-			m[ 3] |= ((long) b[ offset +  30 ] & 0xFF ) << 48;
-			m[ 3] |= ((long) b[ offset +  31 ]        ) << 56;
+			mx  = ((long) b[ offset +  24 ] & 0xFF );
+			mx |= ((long) b[ offset +  25 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  26 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  27 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  28 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  29 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  30 ] & 0xFF ) << 48;
+			m[3] = mx | ((long) b[ offset +  31 ] )  << 56;
 
-			m[ 4]  = ((long) b[ offset +  32 ] & 0xFF );
-			m[ 4] |= ((long) b[ offset +  33 ] & 0xFF ) <<  8;
-			m[ 4] |= ((long) b[ offset +  34 ] & 0xFF ) << 16;
-			m[ 4] |= ((long) b[ offset +  35 ] & 0xFF ) << 24;
-			m[ 4] |= ((long) b[ offset +  36 ] & 0xFF ) << 32;
-			m[ 4] |= ((long) b[ offset +  37 ] & 0xFF ) << 40;
-			m[ 4] |= ((long) b[ offset +  38 ] & 0xFF ) << 48;
-			m[ 4] |= ((long) b[ offset +  39 ]        ) << 56;
+			mx  = ((long) b[ offset +  32 ] & 0xFF );
+			mx |= ((long) b[ offset +  33 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  34 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  35 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  36 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  37 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  38 ] & 0xFF ) << 48;
+			m[4] = mx | ((long) b[ offset +  39 ] )  << 56;
 
-			m[ 5]  = ((long) b[ offset +  40 ] & 0xFF );
-			m[ 5] |= ((long) b[ offset +  41 ] & 0xFF ) <<  8;
-			m[ 5] |= ((long) b[ offset +  42 ] & 0xFF ) << 16;
-			m[ 5] |= ((long) b[ offset +  43 ] & 0xFF ) << 24;
-			m[ 5] |= ((long) b[ offset +  44 ] & 0xFF ) << 32;
-			m[ 5] |= ((long) b[ offset +  45 ] & 0xFF ) << 40;
-			m[ 5] |= ((long) b[ offset +  46 ] & 0xFF ) << 48;
-			m[ 5] |= ((long) b[ offset +  47 ]        ) << 56;
+			mx  = ((long) b[ offset +  40 ] & 0xFF );
+			mx |= ((long) b[ offset +  41 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  42 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  43 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  44 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  45 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  46 ] & 0xFF ) << 48;
+			m[5] = mx | ((long) b[ offset +  47 ] )  << 56;
 
-			m[ 6]  = ((long) b[ offset +  48 ] & 0xFF );
-			m[ 6] |= ((long) b[ offset +  49 ] & 0xFF ) <<  8;
-			m[ 6] |= ((long) b[ offset +  50 ] & 0xFF ) << 16;
-			m[ 6] |= ((long) b[ offset +  51 ] & 0xFF ) << 24;
-			m[ 6] |= ((long) b[ offset +  52 ] & 0xFF ) << 32;
-			m[ 6] |= ((long) b[ offset +  53 ] & 0xFF ) << 40;
-			m[ 6] |= ((long) b[ offset +  54 ] & 0xFF ) << 48;
-			m[ 6] |= ((long) b[ offset +  55 ]        ) << 56;
+			mx  = ((long) b[ offset +  48 ] & 0xFF );
+			mx |= ((long) b[ offset +  49 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  50 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  51 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  52 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  53 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  54 ] & 0xFF ) << 48;
+			m[6] = mx | ((long) b[ offset +  55 ] )  << 56;
 
-			m[ 7]  = ((long) b[ offset +  56 ] & 0xFF );
-			m[ 7] |= ((long) b[ offset +  57 ] & 0xFF ) <<  8;
-			m[ 7] |= ((long) b[ offset +  58 ] & 0xFF ) << 16;
-			m[ 7] |= ((long) b[ offset +  59 ] & 0xFF ) << 24;
-			m[ 7] |= ((long) b[ offset +  60 ] & 0xFF ) << 32;
-			m[ 7] |= ((long) b[ offset +  61 ] & 0xFF ) << 40;
-			m[ 7] |= ((long) b[ offset +  62 ] & 0xFF ) << 48;
-			m[ 7] |= ((long) b[ offset +  63 ]        ) << 56;
+			mx  = ((long) b[ offset +  56 ] & 0xFF );
+			mx |= ((long) b[ offset +  57 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  58 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  59 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  60 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  61 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  62 ] & 0xFF ) << 48;
+			m[7] = mx | ((long) b[ offset +  63 ] )  << 56;
 
-			m[ 8]  = ((long) b[ offset +  64 ] & 0xFF );
-			m[ 8] |= ((long) b[ offset +  65 ] & 0xFF ) <<  8;
-			m[ 8] |= ((long) b[ offset +  66 ] & 0xFF ) << 16;
-			m[ 8] |= ((long) b[ offset +  67 ] & 0xFF ) << 24;
-			m[ 8] |= ((long) b[ offset +  68 ] & 0xFF ) << 32;
-			m[ 8] |= ((long) b[ offset +  69 ] & 0xFF ) << 40;
-			m[ 8] |= ((long) b[ offset +  70 ] & 0xFF ) << 48;
-			m[ 8] |= ((long) b[ offset +  71 ]        ) << 56;
+			mx  = ((long) b[ offset +  64 ] & 0xFF );
+			mx |= ((long) b[ offset +  65 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  66 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  67 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  68 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  69 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  70 ] & 0xFF ) << 48;
+			m[8] = mx | ((long) b[ offset +  71 ] )  << 56;
 
-			m[ 9]  = ((long) b[ offset +  72 ] & 0xFF );
-			m[ 9] |= ((long) b[ offset +  73 ] & 0xFF ) <<  8;
-			m[ 9] |= ((long) b[ offset +  74 ] & 0xFF ) << 16;
-			m[ 9] |= ((long) b[ offset +  75 ] & 0xFF ) << 24;
-			m[ 9] |= ((long) b[ offset +  76 ] & 0xFF ) << 32;
-			m[ 9] |= ((long) b[ offset +  77 ] & 0xFF ) << 40;
-			m[ 9] |= ((long) b[ offset +  78 ] & 0xFF ) << 48;
-			m[ 9] |= ((long) b[ offset +  79 ]        ) << 56;
+			mx  = ((long) b[ offset +  72 ] & 0xFF );
+			mx |= ((long) b[ offset +  73 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  74 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  75 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  76 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  77 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  78 ] & 0xFF ) << 48;
+			m[9] = mx | ((long) b[ offset +  79 ] )  << 56;
 
-			m[10]  = ((long) b[ offset +  80 ] & 0xFF );
-			m[10] |= ((long) b[ offset +  81 ] & 0xFF ) <<  8;
-			m[10] |= ((long) b[ offset +  82 ] & 0xFF ) << 16;
-			m[10] |= ((long) b[ offset +  83 ] & 0xFF ) << 24;
-			m[10] |= ((long) b[ offset +  84 ] & 0xFF ) << 32;
-			m[10] |= ((long) b[ offset +  85 ] & 0xFF ) << 40;
-			m[10] |= ((long) b[ offset +  86 ] & 0xFF ) << 48;
-			m[10] |= ((long) b[ offset +  87 ]        ) << 56;
+			mx  = ((long) b[ offset +  80 ] & 0xFF );
+			mx |= ((long) b[ offset +  81 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  82 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  83 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  84 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  85 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  86 ] & 0xFF ) << 48;
+			m[10] = mx | ((long) b[ offset +  87 ] ) << 56;
 
-			m[11]  = ((long) b[ offset +  88 ] & 0xFF );
-			m[11] |= ((long) b[ offset +  89 ] & 0xFF ) <<  8;
-			m[11] |= ((long) b[ offset +  90 ] & 0xFF ) << 16;
-			m[11] |= ((long) b[ offset +  91 ] & 0xFF ) << 24;
-			m[11] |= ((long) b[ offset +  92 ] & 0xFF ) << 32;
-			m[11] |= ((long) b[ offset +  93 ] & 0xFF ) << 40;
-			m[11] |= ((long) b[ offset +  94 ] & 0xFF ) << 48;
-			m[11] |= ((long) b[ offset +  95 ]        ) << 56;
+			mx  = ((long) b[ offset +  88 ] & 0xFF );
+			mx |= ((long) b[ offset +  89 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  90 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  91 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset +  92 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset +  93 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset +  94 ] & 0xFF ) << 48;
+			m[11] = mx | ((long) b[ offset +  95 ] ) << 56;
 
-			m[12]  = ((long) b[ offset +  96 ] & 0xFF );
-			m[12] |= ((long) b[ offset +  97 ] & 0xFF ) <<  8;
-			m[12] |= ((long) b[ offset +  98 ] & 0xFF ) << 16;
-			m[12] |= ((long) b[ offset +  99 ] & 0xFF ) << 24;
-			m[12] |= ((long) b[ offset + 100 ] & 0xFF ) << 32;
-			m[12] |= ((long) b[ offset + 101 ] & 0xFF ) << 40;
-			m[12] |= ((long) b[ offset + 102 ] & 0xFF ) << 48;
-			m[12] |= ((long) b[ offset + 103 ]        ) << 56;
+			mx  = ((long) b[ offset +  96 ] & 0xFF );
+			mx |= ((long) b[ offset +  97 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset +  98 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset +  99 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset + 100 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset + 101 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset + 102 ] & 0xFF ) << 48;
+			m[12] = mx | ((long) b[ offset + 103 ] ) << 56;
 
-			m[13]  = ((long) b[ offset + 104 ] & 0xFF );
-			m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;
-			m[13] |= ((long) b[ offset + 106 ] & 0xFF ) << 16;
-			m[13] |= ((long) b[ offset + 107 ] & 0xFF ) << 24;
-			m[13] |= ((long) b[ offset + 108 ] & 0xFF ) << 32;
-			m[13] |= ((long) b[ offset + 109 ] & 0xFF ) << 40;
-			m[13] |= ((long) b[ offset + 110 ] & 0xFF ) << 48;
-			m[13] |= ((long) b[ offset + 111 ]        ) << 56;
+			mx  = ((long) b[ offset + 104 ] & 0xFF );
+			mx |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset + 106 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset + 107 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset + 108 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset + 109 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset + 110 ] & 0xFF ) << 48;
+			m[13] = mx | ((long) b[ offset + 111 ] ) << 56;
 
-			m[14]  = ((long) b[ offset + 112 ] & 0xFF );
-			m[14] |= ((long) b[ offset + 113 ] & 0xFF ) <<  8;
-			m[14] |= ((long) b[ offset + 114 ] & 0xFF ) << 16;
-			m[14] |= ((long) b[ offset + 115 ] & 0xFF ) << 24;
-			m[14] |= ((long) b[ offset + 116 ] & 0xFF ) << 32;
-			m[14] |= ((long) b[ offset + 117 ] & 0xFF ) << 40;
-			m[14] |= ((long) b[ offset + 118 ] & 0xFF ) << 48;
-			m[14] |= ((long) b[ offset + 119 ]        ) << 56;
+			mx  = ((long) b[ offset + 112 ] & 0xFF );
+			mx |= ((long) b[ offset + 113 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset + 114 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset + 115 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset + 116 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset + 117 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset + 118 ] & 0xFF ) << 48;
+			m[14] = mx | ((long) b[ offset + 119 ] ) << 56;
 
-			m[15]  = ((long) b[ offset + 120 ] & 0xFF );
-			m[15] |= ((long) b[ offset + 121 ] & 0xFF ) <<  8;
-			m[15] |= ((long) b[ offset + 122 ] & 0xFF ) << 16;
-			m[15] |= ((long) b[ offset + 123 ] & 0xFF ) << 24;
-			m[15] |= ((long) b[ offset + 124 ] & 0xFF ) << 32;
-			m[15] |= ((long) b[ offset + 125 ] & 0xFF ) << 40;
-			m[15] |= ((long) b[ offset + 126 ] & 0xFF ) << 48;
-			m[15] |= ((long) b[ offset + 127 ]        ) << 56;
-//			Debug.dumpArray("m @ compress", m);
-//
-//			Debug.dumpArray("h @ compress", h);
-//			Debug.dumpArray("t @ compress", t);
-//			Debug.dumpArray("f @ compress", f);
+			mx  = ((long) b[ offset + 120 ] & 0xFF );
+			mx |= ((long) b[ offset + 121 ] & 0xFF ) <<  8;
+			mx |= ((long) b[ offset + 122 ] & 0xFF ) << 16;
+			mx |= ((long) b[ offset + 123 ] & 0xFF ) << 24;
+			mx |= ((long) b[ offset + 124 ] & 0xFF ) << 32;
+			mx |= ((long) b[ offset + 125 ] & 0xFF ) << 40;
+			mx |= ((long) b[ offset + 126 ] & 0xFF ) << 48;
+			m[15] = mx | ((long) b[ offset + 127 ] ) << 56;
 
 			// set v registers
 			final   long[]  v = state.v;
@@ -1940,7 +1936,7 @@ public interface Blake2b {
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 32;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 40;
 				v0 |= ((long)b [ off++ ] & 0xFF ) << 48;
-				v0 |= ((long)b [ off   ]        ) << 56;
+				v0 |= ((long)b [ off   ] ) << 56;
 				return v0;
 			}
 			/** */
