@@ -119,7 +119,8 @@ public class Bench implements Runnable {
 
 			final long delta_us = TimeUnit.NANOSECONDS.toMicros(delta);
 			final double thrpt = ((double) b.length * iters) / delta_us;
-			System.out.format("%-8s | %10d | %13d | %14d |    %16.6f\r", md_name, iters, b.length, delta, thrpt);
+			System.out.format("%-8s | %10d | %13d | %14d |    %16.6f\r", md_name, iters, b.length, delta/iters
+					, thrpt);
 		}
 	}
 	interface Call {

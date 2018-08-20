@@ -84,22 +84,6 @@ public interface Blake2b {
 				0x1f83d9abfb41bd6bL,
 				0x5be0cd19137e2179L
 		};
-
-//		/** sigma per spec used in compress func generation - for reference only */
-//		static byte[][] sigma = {
-//				{  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 } ,
-//				{ 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 } ,
-//				{ 11,  8, 12,  0,  5,  2, 15, 13, 10, 14,  3,  6,  7,  1,  9,  4 } ,
-//				{  7,  9,  3,  1, 13, 12, 11, 14,  2,  6,  5, 10,  4,  0, 15,  8 } ,
-//				{  9,  0,  5,  7,  2,  4, 10, 15, 14,  1, 11, 12,  6,  8,  3, 13 } ,
-//				{  2, 12,  6, 10,  0, 11,  8,  3,  4, 13,  7,  5, 15, 14,  1,  9 } ,
-//				{ 12,  5,  1, 15, 14, 13,  4, 10,  0,  7,  6,  3,  9,  2,  8, 11 } ,
-//				{ 13, 11,  7, 14, 12,  1,  3,  9,  5,  0, 15,  4,  8,  6,  2, 10 } ,
-//				{  6, 15, 14,  9, 11,  3,  0,  8, 12,  2, 13,  7,  1,  4, 10,  5 } ,
-//				{ 10,  2,  8,  4,  7,  6,  1,  5, 15, 11,  9, 14,  3, 12, 13 , 0 } ,
-//				{  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15 } ,
-//				{ 14, 10,  4,  8,  9, 15, 13,  6,  1, 12,  0,  2, 11,  7,  5,  3 }
-//		};
 	}
 
 	// ---------------------------------------------------------------------
@@ -403,9 +387,6 @@ public interface Blake2b {
 			}
 
 			initialize();
-
-//			Debug.dumpBuffer(System.out, "param bytes at init", param.getBytes());
-
 		}
 
 		public ResumeHandle state() {
@@ -416,7 +397,6 @@ public interface Blake2b {
 			// state vector h - copy values to address reset() requests
 			System.arraycopy( param.initialized_H(), 0, this.state.h, 0, Spec.state_space_len);
 
-//			Debug.dumpArray("init H", this.h);
 			// if we have a key update initial block
 			// Note param has zero padded key_bytes to Spec.max_key_bytes
 			if(param.hasKey){
@@ -461,8 +441,6 @@ public interface Blake2b {
 				throw new IllegalArgumentException("input buffer (b) is null");
 			}
 			/* zero or more calls to compress */
-			// REVU: possibly the double buffering of c-ref is more sensible ..
-			//       regardless, the hotspot is in the compress, as expected.
 			final long[] t = state.t;
 			final byte[] buffer = state.buffer;
 			while (len > 0) {
@@ -584,7 +562,7 @@ public interface Blake2b {
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
-			// the local variable gymnastics significantly improve performance.
+			// the local variable gymnastics do improve performance.
 			final long[] m = state.m;
 			long mx;
 			mx  = ((long) b[ offset       ] & 0xFF );
@@ -753,8 +731,6 @@ public interface Blake2b {
 			v[14] = f [ 0 ] ^ 0x1f83d9abfb41bd6bL;
 			v[15] = f [ 1 ] ^ 0x5be0cd19137e2179L;
 
-//			Debug.dumpArray("v @ compress", v);
-
 			// do the rounds
 			round_0(v, m);
 			round_1(v, m);
@@ -779,8 +755,6 @@ public interface Blake2b {
 			h[ 6] ^= v[6] ^ v[14];
 			h[ 7] ^= v[7] ^ v[15];
 
-//			Debug.dumpArray("v @ compress end", v);
-//			Debug.dumpArray("h @ compress end", h);
 			/* kaamil */
 		}
 		private void round_0(final long[] v, final long[] m) {

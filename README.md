@@ -214,13 +214,13 @@ The hotspot is, as expected, is in the `compress()` function of the `Blake2b.Eng
 Using the (provided) `ove.crypto.digest.Bench` utility class, on an `MacBook Air (OS X 10.13.14)` with `1.3 GHz Intel Core i5` with `Java HotSpot(TM) 64-Bit Server VM (build 25.181-b13, mixed mode)` these are the relative performance numbers. These number hold fairly well regardless of the message size.
 
     digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
-    md5      |     100000 |          4096 |     1439390970 |          284.564989
+    md5      |     100000 |          4096 |          14082 |          290.864263
 
     digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
-    blake2b  |     100000 |          4096 |     1601343421 |          255.785300 
+    blake2b  |     100000 |          4096 |          15376 |          266.385713
 
     digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
-    sha1     |     100000 |          4096 |     2154751350 |          190.091570
+    sha1     |     100000 |          4096 |          21168 |          193.499622
 
 To run the bench, try
 
