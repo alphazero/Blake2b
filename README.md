@@ -205,13 +205,31 @@ The `Blake2b.Tree` class provides a convenient semantic `API` for incremental ha
 
 # Performance
 
-Performance (as measured by hash function throughput) is significantly better than `JRE`'s `SHA1`. `JRE`'s `MD5` remains faster than both. 
+The `Blake2B` hash was designed to be faster than `MD5`, however that design goal, in my opinion, can not be met in a pure
+Java implementation.
 
-The hotspot is, as expected, is in the `compress()` function of the `Blake2b.Engine`. There appears to be a trade off between function size and in-lining of the compress rounds. The current realization of the compress uses individual round functions, per extensive benchmarking of various approaches to the compress function composition. It seems that the JIT compiler is sensitive to function size, given that merging of the round functions degrades performance.
+The `Blake2B` kernel operates on 8 `byte` machine words mapped from the message byte array with
+`little endian` semantics. In a language like `C`, this conversion is a simple matter of casting a pointer. In `Java`,
+the same conversion is a more elaborate affair. Besides the fact that one can not simply cast from `byte[]` to `long`,
+the fact that the `JVM` does not support `unsigned integer` data types necessitates 5 extra masking operations for each
+such mapping to deal with the sign issue. Given that each call to `compress()` requires mapping 128 bytes to 16 long words,
+that translates to **80** `& 0xFF` masking ops per 128 byte block that was not envisioned in the original design for this
+function. (A no-op version of `readLong` for this same codebase that emulates the performance of equivalent `C` by simply
+returning the first byte, for example, clocks at `314 b/usec` -- thus exceeding `md5` performance on the same machine, vs
+the `266 b/usec` of the actual working version which lags behind the `md5`.)
+
+Yet another consideration is the fact that a pure Java implementation can not (directly) utilize `simd` features of the
+hardware. So that also leaves performance gains in x2 to x3 range on the table.
+
+That said, the best performance numbers for non-Java `Blake2B` implementations speak of processing roughly `3 bytes per
+cpu cycle`. This pure Java implementation achieves roughly `0.3 bytes per cpu cycle` which is rather decent given the
+above consideration, and likely close to the the performance ceiling for a pure Java implementation.
 
 ## Relative benchmark results
 
-Using the (provided) `ove.crypto.digest.Bench` utility class, on an `MacBook Air (OS X 10.13.14)` with `1.3 GHz Intel Core i5` with `Java HotSpot(TM) 64-Bit Server VM (build 25.181-b13, mixed mode)` these are the relative performance numbers. These number hold fairly well regardless of the message size.
+Using the (provided) `ove.crypto.digest.Bench` utility class, on an `MacBook Air (OS X 10.13.14)` with `1.3 GHz Intel Core i5`
+with `Java HotSpot(TM) 64-Bit Server VM (build 25.181-b13, mixed mode)` these are the relative performance numbers.
+These number hold fairly well regardless of the message size.
 
     digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
     md5      |     100000 |          4096 |          14082 |          290.864263
@@ -226,18 +244,13 @@ To run the bench, try
 
     java -cp target/ove.blake2b-alpha.0.jar ove.crypto.digest.Bench -n <message size> -i <iterations> -d <digest>
 
+for example:
+
+    java -cp target/ove.blake2b-alpha.0.jar ove.crypto.digest.Bench -n 4096 -i 100000 -d blake2b
+
 ## Further possible optimizations
 
-### Using Hardcoded Array Offseting
-`Compress()` is currently handed an array with an offset for mapping of the compression buffer from `update()` and `digest()`. So mapping of the compression input buffer to the `m[]` vector incurrs the cost of `128` offset calculations (e.g. `m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;`). 
-
-Update: Benchmark of this alternative approach (copying 128B blocks from user date in `update()` and using hardcoded offsets in `compress()`) validated the current approach. The alternative was in fact slower.  
-
-### Using ByteBuffer
-Using the native `byte[]` backing buffer of a direct, & page aligned, allocated `ByteBuffer` may *possibly* afford a bit of efficiencies, but the development platform available to me (a Mac Air) does not support this optional feature of `ByteBuffer`. You're welcome to try this and I would be interested in the feedback as to your findings.
-
-### Unsafe
-A variant `Engine` implementation using `sun.misc.Unsafe` is vaguely entertained for future. The fact that offering this varient would (optimally) requires support for pluggable engines (and thus possibly full `JCA/JCE` compliance) puts it off the near-term TODO list.  Frankly it does not seem that the issue is in the use of `byte[]` object, but no claim to authoritative opinion is made in this regard. If you know better, do let me know!
+Open to suggestions.
 
 # Dedication
 To the Eternal Absolute, The One, ~!!! Ahura-Mazda !!!~ *even* ~!!! Al-Aziz-Al-Hakim !!!~, The Lord of Sentient Realms, The True in Love. The Friend.
