@@ -562,174 +562,45 @@ public interface Blake2b {
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
-			// the local variable gymnastics do improve performance.
 			final long[] m = state.m;
-			long mx;
-			mx  = ((long) b[ offset       ] & 0xFF );
-			mx |= ((long) b[ offset +   1 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +   2 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +   3 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +   4 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +   5 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +   6 ] & 0xFF ) << 48;
-			m[0] = mx | ((long) b[ offset +   7 ] )  << 56;
-
-			mx  = ((long) b[ offset +   8 ] & 0xFF );
-			mx |= ((long) b[ offset +   9 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  10 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  11 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  12 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  13 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  14 ] & 0xFF ) << 48;
-			m[1] = mx | ((long) b[ offset +  15 ] )  << 56;
-
-			mx  = ((long) b[ offset +  16 ] & 0xFF );
-			mx |= ((long) b[ offset +  17 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  18 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  19 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  20 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  21 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  22 ] & 0xFF ) << 48;
-			m[2] = mx | ((long) b[ offset +  23 ] )  << 56;
-
-			mx  = ((long) b[ offset +  24 ] & 0xFF );
-			mx |= ((long) b[ offset +  25 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  26 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  27 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  28 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  29 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  30 ] & 0xFF ) << 48;
-			m[3] = mx | ((long) b[ offset +  31 ] )  << 56;
-
-			mx  = ((long) b[ offset +  32 ] & 0xFF );
-			mx |= ((long) b[ offset +  33 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  34 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  35 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  36 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  37 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  38 ] & 0xFF ) << 48;
-			m[4] = mx | ((long) b[ offset +  39 ] )  << 56;
-
-			mx  = ((long) b[ offset +  40 ] & 0xFF );
-			mx |= ((long) b[ offset +  41 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  42 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  43 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  44 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  45 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  46 ] & 0xFF ) << 48;
-			m[5] = mx | ((long) b[ offset +  47 ] )  << 56;
-
-			mx  = ((long) b[ offset +  48 ] & 0xFF );
-			mx |= ((long) b[ offset +  49 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  50 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  51 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  52 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  53 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  54 ] & 0xFF ) << 48;
-			m[6] = mx | ((long) b[ offset +  55 ] )  << 56;
-
-			mx  = ((long) b[ offset +  56 ] & 0xFF );
-			mx |= ((long) b[ offset +  57 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  58 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  59 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  60 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  61 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  62 ] & 0xFF ) << 48;
-			m[7] = mx | ((long) b[ offset +  63 ] )  << 56;
-
-			mx  = ((long) b[ offset +  64 ] & 0xFF );
-			mx |= ((long) b[ offset +  65 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  66 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  67 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  68 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  69 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  70 ] & 0xFF ) << 48;
-			m[8] = mx | ((long) b[ offset +  71 ] )  << 56;
-
-			mx  = ((long) b[ offset +  72 ] & 0xFF );
-			mx |= ((long) b[ offset +  73 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  74 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  75 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  76 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  77 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  78 ] & 0xFF ) << 48;
-			m[9] = mx | ((long) b[ offset +  79 ] )  << 56;
-
-			mx  = ((long) b[ offset +  80 ] & 0xFF );
-			mx |= ((long) b[ offset +  81 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  82 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  83 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  84 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  85 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  86 ] & 0xFF ) << 48;
-			m[10] = mx | ((long) b[ offset +  87 ] ) << 56;
-
-			mx  = ((long) b[ offset +  88 ] & 0xFF );
-			mx |= ((long) b[ offset +  89 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  90 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  91 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset +  92 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset +  93 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset +  94 ] & 0xFF ) << 48;
-			m[11] = mx | ((long) b[ offset +  95 ] ) << 56;
-
-			mx  = ((long) b[ offset +  96 ] & 0xFF );
-			mx |= ((long) b[ offset +  97 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset +  98 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset +  99 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset + 100 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset + 101 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset + 102 ] & 0xFF ) << 48;
-			m[12] = mx | ((long) b[ offset + 103 ] ) << 56;
-
-			mx  = ((long) b[ offset + 104 ] & 0xFF );
-			mx |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset + 106 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset + 107 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset + 108 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset + 109 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset + 110 ] & 0xFF ) << 48;
-			m[13] = mx | ((long) b[ offset + 111 ] ) << 56;
-
-			mx  = ((long) b[ offset + 112 ] & 0xFF );
-			mx |= ((long) b[ offset + 113 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset + 114 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset + 115 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset + 116 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset + 117 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset + 118 ] & 0xFF ) << 48;
-			m[14] = mx | ((long) b[ offset + 119 ] ) << 56;
-
-			mx  = ((long) b[ offset + 120 ] & 0xFF );
-			mx |= ((long) b[ offset + 121 ] & 0xFF ) <<  8;
-			mx |= ((long) b[ offset + 122 ] & 0xFF ) << 16;
-			mx |= ((long) b[ offset + 123 ] & 0xFF ) << 24;
-			mx |= ((long) b[ offset + 124 ] & 0xFF ) << 32;
-			mx |= ((long) b[ offset + 125 ] & 0xFF ) << 40;
-			mx |= ((long) b[ offset + 126 ] & 0xFF ) << 48;
-			m[15] = mx | ((long) b[ offset + 127 ] ) << 56;
+			m[ 0] = LittleEndian.readLong(b, offset);
+			m[ 1] = LittleEndian.readLong(b, offset + 8);
+			m[ 2] = LittleEndian.readLong(b, offset + 16);
+			m[ 3] = LittleEndian.readLong(b, offset + 24);
+			m[ 4] = LittleEndian.readLong(b, offset + 32);
+			m[ 5] = LittleEndian.readLong(b, offset + 40);
+			m[ 6] = LittleEndian.readLong(b, offset + 48);
+			m[ 7] = LittleEndian.readLong(b, offset + 56);
+			m[ 8] = LittleEndian.readLong(b, offset + 64);
+			m[ 9] = LittleEndian.readLong(b, offset + 72);
+			m[10] = LittleEndian.readLong(b, offset + 80);
+			m[11] = LittleEndian.readLong(b, offset + 88);
+			m[12] = LittleEndian.readLong(b, offset + 96);
+			m[13] = LittleEndian.readLong(b, offset + 104);
+			m[14] = LittleEndian.readLong(b, offset + 112);
+			m[15] = LittleEndian.readLong(b, offset + 120);
 
 			// set v registers
 			final   long[]  v = state.v;
 			final   long[]  h = state.h;
 			final   long[]  t = state.t;
 			final   long[]  f = state.f;
-			v[ 0] = h[ 0];
-			v[ 1] = h[ 1];
-			v[ 2] = h[ 2];
-			v[ 3] = h[ 3];
-			v[ 4] = h[ 4];
-			v[ 5] = h[ 5];
-			v[ 6] = h[ 6];
-			v[ 7] = h[ 7];
+			v[ 0] = h[0];
+			v[ 1] = h[1];
+			v[ 2] = h[2];
+			v[ 3] = h[3];
+			v[ 4] = h[4];
+			v[ 5] = h[5];
+			v[ 6] = h[6];
+			v[ 7] = h[7];
 			v[ 8] =           0x6a09e667f3bcc908L;
 			v[ 9] =           0xbb67ae8584caa73bL;
 			v[10] =           0x3c6ef372fe94f82bL;
 			v[11] =           0xa54ff53a5f1d36f1L;
-			v[12] = t [ 0 ] ^ 0x510e527fade682d1L;
-			v[13] = t [ 1 ] ^ 0x9b05688c2b3e6c1fL;
-			v[14] = f [ 0 ] ^ 0x1f83d9abfb41bd6bL;
-			v[15] = f [ 1 ] ^ 0x5be0cd19137e2179L;
+			v[12] = t [0] ^ 0x510e527fade682d1L;
+			v[13] = t [1] ^ 0x9b05688c2b3e6c1fL;
+			v[14] = f [0] ^ 0x1f83d9abfb41bd6bL;
+			v[15] = f [1] ^ 0x5be0cd19137e2179L;
 
 			// do the rounds
 			round_0(v, m);
@@ -746,19 +617,19 @@ public interface Blake2b {
 			round_1(v, m); // round 11 is identical to round 1
 
 			// Update state vector h
-			h[ 0] ^= v[0] ^ v[8];
-			h[ 1] ^= v[1] ^ v[9];
-			h[ 2] ^= v[2] ^ v[10];
-			h[ 3] ^= v[3] ^ v[11];
-			h[ 4] ^= v[4] ^ v[12];
-			h[ 5] ^= v[5] ^ v[13];
-			h[ 6] ^= v[6] ^ v[14];
-			h[ 7] ^= v[7] ^ v[15];
+			h[0] ^= v[0] ^ v[8];
+			h[1] ^= v[1] ^ v[9];
+			h[2] ^= v[2] ^ v[10];
+			h[3] ^= v[3] ^ v[11];
+			h[4] ^= v[4] ^ v[12];
+			h[5] ^= v[5] ^ v[13];
+			h[6] ^= v[6] ^ v[14];
+			h[7] ^= v[7] ^ v[15];
 
 			/* kaamil */
 		}
 		private void round_0(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [0];
+			v[ 0] = v[ 0] + v[ 4] + m[0];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -863,7 +734,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_1(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [14];
+			v[ 0] = v[ 0] + v[ 4] + m[14];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -968,7 +839,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_2(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [11];
+			v[ 0] = v[ 0] + v[ 4] + m[11];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1073,7 +944,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_3(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [7];
+			v[ 0] = v[ 0] + v[ 4] + m[7];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1178,7 +1049,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_4(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [9];
+			v[ 0] = v[ 0] + v[ 4] + m[9];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1283,7 +1154,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_5(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [2];
+			v[ 0] = v[ 0] + v[ 4] + m[2];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1388,7 +1259,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_6(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [12];
+			v[ 0] = v[ 0] + v[ 4] + m[12];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1493,7 +1364,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_7(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [13];
+			v[ 0] = v[ 0] + v[ 4] + m[13];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1598,7 +1469,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_8(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [6];
+			v[ 0] = v[ 0] + v[ 4] + m[6];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1703,7 +1574,7 @@ public interface Blake2b {
 			v[ 4] = ( v[ 4] << 1 ) | ( v[ 4] >>> 63 );
 		}
 		private void round_9(final long[] v, final long[] m) {
-			v[ 0] = v[ 0] + v[ 4] + m [10];
+			v[ 0] = v[ 0] + v[ 4] + m[10];
 			v[12] ^= v[ 0];
 			v[12] = ( v[12] << 32 ) | ( v[12] >>> 32 );
 			v[ 8] = v[ 8] + v[12];
@@ -1892,28 +1763,23 @@ public interface Blake2b {
 				}
 				return new String(digits);
 			}
-			public static int readInt (final byte[] b, int off) {
-				int v0
-						= ((int)b [ off++ ] & 0xFF );
-				v0 |= ((int)b [ off++ ] & 0xFF ) <<  8;
-				v0 |= ((int)b [ off++ ] & 0xFF ) << 16;
-				v0 |= ((int)b [ off   ]        ) << 24;
-				return v0;
+			public static int readInt (final byte[] b, final int off) {
+				int v0 = ((int)b [ off ] & 0xFF );
+				v0 |= ((int)b [ off + 1 ] & 0xFF ) <<  8;
+				v0 |= ((int)b [ off + 2 ] & 0xFF ) << 16;
+				return v0 | ((int)b [ off + 3 ]  ) << 24;
 			}
 			/** Little endian - byte[] to long */
-			public static long readLong (final byte[] b, int off) {
-				long v0
-						= ((long)b [ off++ ] & 0xFF );
-				v0 |= ((long)b [ off++ ] & 0xFF ) <<  8;
-				v0 |= ((long)b [ off++ ] & 0xFF ) << 16;
-				v0 |= ((long)b [ off++ ] & 0xFF ) << 24;
-				v0 |= ((long)b [ off++ ] & 0xFF ) << 32;
-				v0 |= ((long)b [ off++ ] & 0xFF ) << 40;
-				v0 |= ((long)b [ off++ ] & 0xFF ) << 48;
-				v0 |= ((long)b [ off   ] ) << 56;
-				return v0;
+			public static long readLong (final byte[] b, final int off) {
+				long v0 = ((long)b [ off ] & 0xFF );
+				v0 |= ((long)b [ off + 1 ] & 0xFF ) <<  8;
+				v0 |= ((long)b [ off + 2 ] & 0xFF ) << 16;
+				v0 |= ((long)b [ off + 3 ] & 0xFF ) << 24;
+				v0 |= ((long)b [ off + 4 ] & 0xFF ) << 32;
+				v0 |= ((long)b [ off + 5 ] & 0xFF ) << 40;
+				v0 |= ((long)b [ off + 6 ] & 0xFF ) << 48;
+				return v0 | ((long)b [ off + 7 ] )  << 56;
 			}
-			/** */
 			/** Little endian - long to byte[] */
 			public static void writeLong (long v, final byte[] b, final int off) {
 				b [ off ]     = (byte) v; v >>>= 8;
