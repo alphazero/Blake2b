@@ -229,9 +229,9 @@ To run the bench, try
 ## Further possible optimizations
 
 ### Using Hardcoded Array Offseting
-`Compress()` is currently handed an array with an offset for mapping of the compression buffer from `update()` and `digest()`. So mapping of the compression input buffer to the `m[]` vector incurrs the cost of `128` offset calculations (e.g. `m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;`). The alternative would be to incurr the `System.arraycopy` equivalent of the 2 `memcpy` calls in `update` function and pass a fixed offset to `compress()` and use hardcoded offsets (e.g. `m[13] |= ((long) b[ 105 ] & 0xFF ) <<  8;`).
+`Compress()` is currently handed an array with an offset for mapping of the compression buffer from `update()` and `digest()`. So mapping of the compression input buffer to the `m[]` vector incurrs the cost of `128` offset calculations (e.g. `m[13] |= ((long) b[ offset + 105 ] & 0xFF ) <<  8;`). 
 
-This was a design decision breaking with the `C` reference implementation to allow for direct mapping of the `m[]` vector of the `compress` from user input `byte[]`, and further obviating the need for the 2 `memcpy`s of the reference implementation. Reverting to a variant closely following the `C` and using a double sized compression buffer and re-evaluting the performance is on the near-term TODO list.
+Update: Benchmark of this alternative approach (copying 128B blocks from user date in `update()` and using hardcoded offsets in `compress()`) validated the current approach. The alternative was in fact slower.  
 
 ### Using ByteBuffer
 Using the native `byte[]` backing buffer of a direct, & page aligned, allocated `ByteBuffer` may *possibly* afford a bit of efficiencies, but the development platform available to me (a Mac Air) does not support this optional feature of `ByteBuffer`. You're welcome to try this and I would be interested in the feedback as to your findings.
