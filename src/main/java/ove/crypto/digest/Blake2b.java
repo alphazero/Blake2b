@@ -533,14 +533,15 @@ public interface Blake2b {
 			final long[] h = state.h;
 			for (int w = 0; w < lcnt; w++) {
 				v = h [ w ];
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v; v >>>= 8;
-				out [ i++ ] = (byte) v;
+				out [ i ] = (byte) v; v >>>= 8;
+				out [ i+1 ] = (byte) v; v >>>= 8;
+				out [ i+2 ] = (byte) v; v >>>= 8;
+				out [ i+3 ] = (byte) v; v >>>= 8;
+				out [ i+4 ] = (byte) v; v >>>= 8;
+				out [ i+5 ] = (byte) v; v >>>= 8;
+				out [ i+6 ] = (byte) v; v >>>= 8;
+				out [ i+7 ] = (byte) v;
+				i+=8;
 			}
 
 			// basta?
@@ -593,10 +594,10 @@ public interface Blake2b {
 			v[ 5] = h[5];
 			v[ 6] = h[6];
 			v[ 7] = h[7];
-			v[ 8] =           0x6a09e667f3bcc908L;
-			v[ 9] =           0xbb67ae8584caa73bL;
-			v[10] =           0x3c6ef372fe94f82bL;
-			v[11] =           0xa54ff53a5f1d36f1L;
+			v[ 8] =         0x6a09e667f3bcc908L;
+			v[ 9] =         0xbb67ae8584caa73bL;
+			v[10] =         0x3c6ef372fe94f82bL;
+			v[11] =         0xa54ff53a5f1d36f1L;
 			v[12] = t [0] ^ 0x510e527fade682d1L;
 			v[13] = t [1] ^ 0x9b05688c2b3e6c1fL;
 			v[14] = f [0] ^ 0x1f83d9abfb41bd6bL;
