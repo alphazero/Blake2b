@@ -29,9 +29,9 @@ import java.util.concurrent.TimeUnit;
 public class Bench implements Runnable {
 
 	interface Default {
-		int iterations = 1000;
-		int datalen = 1024;
-		String digest = "blake2b";
+		int iterations = 100000;
+		int datalen = 4096;
+		String digest = "blake2b-512";
 	}
 
 	static volatile boolean f_run = true;
@@ -43,28 +43,30 @@ public class Bench implements Runnable {
 		static int usage () {
 			System.out.println("usage: java -cp .. ove.crypto.digest.Bench [options]");
 			System.out.println("[options]");
-			explain ("-d",  "digest to bench, one of {blake2, sha1, md5}. default: blake2b");
-			explain ("-i",  "number of iterations (digest function calls) per bench round. default: 1000");
-			explain ("-n",  "size of the digested buffer in bytes. default: 1024 b / call");
+			explain ("-d",  "digest algorithm to bench - one of " +
+					"{blake2-256, blake2-256, sha1, sha-256, sha-512, md5}. default: blake2b-512");
+			explain ("-i",  "number of iterations (digest function calls) per bench round. default: 100000");
+			explain ("-n",  "size of the digested buffer in bytes. default: 4096 / call");
 
 			return -1;
 		}
 	}
+
 	public static void main(final String... args) throws Exception{
-		if(args.length == 0) {
+		final CmdLineArgs clargs = CmdLineArgs.parse(null, args);
+		if (clargs.isUsage()) {
 			System.exit(Usage.usage());
 		}
-		final CmdLineArgs clargs = CmdLineArgs.parse(null, args);
 		try {
-			String md_name  = null;
+			String algorithm;
 			int iters;
 			int datalen;
 
-			md_name = clargs.getOption("d", Default.digest);
+			algorithm = clargs.getOption("d", Default.digest);
 			iters = clargs.getIntOption("i", Default.iterations);
 			datalen = clargs.getIntOption("n", Default.datalen);
 
-			final Bench bench = new Bench (md_name, iters, datalen);
+			final Bench bench = new Bench (algorithm, iters, datalen);
 			final Thread brth = new Thread(bench, "bench-runner");
 			brth.start();
 			System.in.read();
@@ -74,19 +76,16 @@ public class Bench implements Runnable {
 		} catch (Throwable e) {
 			System.exit(Usage.usage());
 		}
-
 	}
 
-	private final String md_name;
+	private final String algorithm;
 	private final int iters;
-	private final int datalen;
 	private final byte[] b;
 	private final Call call;
 
-	Bench (final String md_name, final int iters, final int datalen) {
-		this.md_name = md_name;
+	Bench (final String algorithm, final int iters, final int datalen) {
+		this.algorithm = algorithm;
 		this.iters = iters;
-		this.datalen = datalen;
 		this.b = new byte[datalen];
 		for(int i=0; i<b.length; i++) {
 			b[i] = (byte)i;
@@ -97,10 +96,12 @@ public class Bench implements Runnable {
 	private Call getBenchedCall() {
 
 		Call call = null;
-		if (md_name.equalsIgnoreCase("blake2b")) {
-			call = newCallBlake2b();
+		if (algorithm.equalsIgnoreCase("blake2b-512")) {
+			call = newCallBlake2b(64);
+		} else if (algorithm.equalsIgnoreCase("blake2b-256")) {
+			call = newCallBlake2b(32);
 		} else {
-			call = newCallJCEAlgorithm(md_name);
+			call = newCallJCEAlgorithm(algorithm);
 		}
 		return call;
 	}
@@ -108,9 +109,9 @@ public class Bench implements Runnable {
 		System.out.format("%s\n", s);
 	}
 	@Override public void run () {
-		puts ("Bench - hit any key to stop.");
+		puts ("Bench - hit any key to stop. (use -h to list options)");
 		puts ("");
-		puts ("digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)");
+		puts ("digest       | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)");
 		while (f_run) {
 			final long start = System.nanoTime();
 			for(int i=0; i<iters; i++)
@@ -119,7 +120,7 @@ public class Bench implements Runnable {
 
 			final long delta_us = TimeUnit.NANOSECONDS.toMicros(delta);
 			final double thrpt = ((double) b.length * iters) / delta_us;
-			System.out.format("%-8s | %10d | %13d | %14d |    %16.6f\r", md_name, iters, b.length, delta/iters
+			System.out.format("%-12s | %10d | %13d | %14d |    %16.6f\r", algorithm, iters, b.length, delta/iters
 					, thrpt);
 		}
 	}
@@ -127,10 +128,11 @@ public class Bench implements Runnable {
 		byte[] func(final byte[] b);
 	}
 
-	public static Call newCallBlake2b ()  {
-		final Blake2b digest = Blake2b.Digest.newInstance (new Blake2b.Param().setDigestLength(20));
+	public static Call newCallBlake2b (final int size)  {
+		final Blake2b digest = Blake2b.Digest.newInstance (new Blake2b.Param().setDigestLength(size));
 		return new Call() {
 			@Override final public byte[] func(byte[] b) {
+				digest.reset();
 				digest.update(b, 0, b.length);
 				return digest.digest();
 			}
@@ -141,6 +143,7 @@ public class Bench implements Runnable {
 		final MessageDigest digest = silentGet (md_name);
 		return new Call() {
 			@Override final public byte[] func(byte[] b) {
+				digest.reset();
 				digest.update(b, 0, b.length);
 				return digest.digest();
 			}
@@ -150,7 +153,9 @@ public class Bench implements Runnable {
 		try {
 			return MessageDigest.getInstance(mdname);
 		} catch (Throwable e) {
-			throw new Error (String.format("Error getting instance of digest <%s>", mdname), e);
+			final Error fault = new Error (String.format("Error getting instance of digest <%s>", mdname), e);
+			System.err.printf("%s\n", fault.toString());
+			throw fault;
 		}
 	}
 }

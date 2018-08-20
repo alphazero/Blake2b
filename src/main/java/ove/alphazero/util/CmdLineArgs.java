@@ -32,12 +32,20 @@ public final class CmdLineArgs {
 	/** */
 	final Map<String, String> map;
 	final Spec spec;
+	final boolean usage;
 	/** */
 	private CmdLineArgs (final Spec spec, final Map<String, String> map){
 		assert map != null : "map is null";
 		this.spec = spec;
 		this.map = map;
+		this.usage = false;
 	}
+	private CmdLineArgs (){
+		this.spec = null;
+		this.map = null;
+		this.usage = true;
+	}
+	public boolean isUsage() { return usage; }
 	/** */
 	public boolean checkFlag(String f) {
 		return map.containsKey(flagKey(f));
@@ -73,6 +81,9 @@ public final class CmdLineArgs {
 	/** */
 	public static CmdLineArgs parse(final Spec spec, String...args) {
 		if(args == null) return null;
+		if(args.length==1 && (args[0].equals("-h") || args[0].equals("--h"))) {
+			return new CmdLineArgs();
+		}
 
 		final Map<String, String> map = new HashMap<String, String>();
 		int fn = 0;
