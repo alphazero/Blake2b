@@ -19,8 +19,11 @@
 
 package ove.crypto.digest;
 
+import sun.misc.Unsafe;
+
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.lang.reflect.Field;
 import java.security.Key;
 import java.security.spec.AlgorithmParameterSpec; // JCE not supported / anticipated ..
 import java.util.Arrays;
@@ -35,10 +38,10 @@ public interface Blake2b {
 	// Specification
 	// ---------------------------------------------------------------------
 	public interface Spec {
-		/** pblock size of blake2b */
+		/** param block size of blake2b */
 		int param_bytes 		= 64;
 
-		/** pblock size of blake2b */
+		/** block size of blake2b */
 		int block_bytes 		= 128;
 
 		/** maximum digest size */
@@ -354,6 +357,19 @@ public interface Blake2b {
 		/** to support update(byte) */
 		private final	byte[] oneByte = new byte[1];
 
+		/** unsafe access */
+		final static Unsafe unsafe;
+		static {
+			try {
+				Field f = Unsafe.class.getDeclaredField("theUnsafe");
+				f.setAccessible(true);
+				unsafe =  (Unsafe) f.get(null);
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+				throw new RuntimeException(e);
+			}
+		}
+
 		// ---------------------------------------------------------------------
 		// Ctor & Initialization
 		// ---------------------------------------------------------------------
@@ -402,6 +418,11 @@ public interface Blake2b {
 			if(param.hasKey){
 				this.update (param.key_bytes, 0, Spec.block_bytes);
 			}
+		}
+
+		/** release all unsafe reources */
+		@Override protected void finalize() throws Throwable {
+			unsafe.freeMemory(this.block_addr);
 		}
 
 		public static void main(String... args) {
@@ -497,7 +518,7 @@ public interface Blake2b {
 			this.state.f[ flag.last_block ] = 0xFFFFFFFFFFFFFFFFL;
 			this.state.f[ flag.last_node ] = this.state.last_node ? 0xFFFFFFFFFFFFFFFFL : 0x0L;
 
-			// compres and write final out (truncated to len) to output
+			// compress and write final out (truncated to len) to output
 			compress( state.buffer, 0 );
 			hashout( output, off, len );
 
@@ -559,27 +580,32 @@ public interface Blake2b {
 		/// Compression Kernel /////////////////////////////////////////// BEGIN
 		////////////////////////////////////////////////////////////////////////
 
+		/** address of allocated unsafe compression block */
+		final long block_addr = unsafe.allocateMemory(Spec.block_bytes);
+
 		/** compress Spec.block_bytes data from b, from offset */
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
+			for(int i=0; i<Spec.block_bytes; i++) unsafe.putByte(block_addr+i, b[offset+i]);
+
 			final long[] m = state.m;
-			m[ 0] = LittleEndian.readLong(b, offset);
-			m[ 1] = LittleEndian.readLong(b, offset + 8);
-			m[ 2] = LittleEndian.readLong(b, offset + 16);
-			m[ 3] = LittleEndian.readLong(b, offset + 24);
-			m[ 4] = LittleEndian.readLong(b, offset + 32);
-			m[ 5] = LittleEndian.readLong(b, offset + 40);
-			m[ 6] = LittleEndian.readLong(b, offset + 48);
-			m[ 7] = LittleEndian.readLong(b, offset + 56);
-			m[ 8] = LittleEndian.readLong(b, offset + 64);
-			m[ 9] = LittleEndian.readLong(b, offset + 72);
-			m[10] = LittleEndian.readLong(b, offset + 80);
-			m[11] = LittleEndian.readLong(b, offset + 88);
-			m[12] = LittleEndian.readLong(b, offset + 96);
-			m[13] = LittleEndian.readLong(b, offset + 104);
-			m[14] = LittleEndian.readLong(b, offset + 112);
-			m[15] = LittleEndian.readLong(b, offset + 120);
+			m[ 0] = unsafe.getLong(block_addr);
+			m[ 1] = unsafe.getLong(block_addr + 8);
+			m[ 2] = unsafe.getLong(block_addr + 16);
+			m[ 3] = unsafe.getLong(block_addr + 24);
+			m[ 4] = unsafe.getLong(block_addr + 32);
+			m[ 5] = unsafe.getLong(block_addr + 40);
+			m[ 6] = unsafe.getLong(block_addr + 48);
+			m[ 7] = unsafe.getLong(block_addr + 56);
+			m[ 8] = unsafe.getLong(block_addr + 64);
+			m[ 9] = unsafe.getLong(block_addr + 72);
+			m[10] = unsafe.getLong(block_addr + 80);
+			m[11] = unsafe.getLong(block_addr + 88);
+			m[12] = unsafe.getLong(block_addr + 96);
+			m[13] = unsafe.getLong(block_addr + 104);
+			m[14] = unsafe.getLong(block_addr + 112);
+			m[15] = unsafe.getLong(block_addr + 120);
 
 			// set v registers
 			final   long[]  v = state.v;
@@ -1772,14 +1798,14 @@ public interface Blake2b {
 			}
 			/** Little endian - byte[] to long */
 			public static long readLong (final byte[] b, final int off) {
-				long v0 = ((long)b [ off ] & 0xFF );
-				v0 |= ((long)b [ off + 1 ] & 0xFF ) <<  8;
-				v0 |= ((long)b [ off + 2 ] & 0xFF ) << 16;
-				v0 |= ((long)b [ off + 3 ] & 0xFF ) << 24;
-				v0 |= ((long)b [ off + 4 ] & 0xFF ) << 32;
-				v0 |= ((long)b [ off + 5 ] & 0xFF ) << 40;
-				v0 |= ((long)b [ off + 6 ] & 0xFF ) << 48;
-				return v0 | ((long)b [ off + 7 ] )  << 56;
+			   long v0 = ((long)b [ off ] & 0xFF );
+			   v0 |= ((long)b [ off + 1 ] & 0xFF ) <<  8;
+			   v0 |= ((long)b [ off + 2 ] & 0xFF ) << 16;
+			   v0 |= ((long)b [ off + 3 ] & 0xFF ) << 24;
+			   v0 |= ((long)b [ off + 4 ] & 0xFF ) << 32;
+			   v0 |= ((long)b [ off + 5 ] & 0xFF ) << 40;
+			   v0 |= ((long)b [ off + 6 ] & 0xFF ) << 48;
+			   return v0 | ((long)b [ off + 7 ] )  << 56;
 			}
 			/** Little endian - long to byte[] */
 			public static void writeLong (long v, final byte[] b, final int off) {
