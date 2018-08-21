@@ -111,7 +111,7 @@ public class Bench implements Runnable {
 	@Override public void run () {
 		puts ("Bench - hit any key to stop. (use -h to list options)");
 		puts ("");
-		puts ("digest       | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)");
+		puts ("digest       | iterations | size (B/iter) | dt (nsec/iter) | throughput (MB/sec)");
 		while (f_run) {
 			final long start = System.nanoTime();
 			for(int i=0; i<iters; i++)
