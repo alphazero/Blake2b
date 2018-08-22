@@ -357,19 +357,6 @@ public interface Blake2b {
 		/** to support update(byte) */
 		private final	byte[] oneByte = new byte[1];
 
-		/** unsafe access */
-		final static Unsafe unsafe;
-		static {
-			try {
-				Field f = Unsafe.class.getDeclaredField("theUnsafe");
-				f.setAccessible(true);
-				unsafe =  (Unsafe) f.get(null);
-			} catch (Exception e) {
-				e.printStackTrace(System.err);
-				throw new RuntimeException(e);
-			}
-		}
-
 		// ---------------------------------------------------------------------
 		// Ctor & Initialization
 		// ---------------------------------------------------------------------
@@ -418,11 +405,6 @@ public interface Blake2b {
 			if(param.hasKey){
 				this.update (param.key_bytes, 0, Spec.block_bytes);
 			}
-		}
-
-		/** release all unsafe reources */
-		@Override protected void finalize() throws Throwable {
-			unsafe.freeMemory(this.block_addr);
 		}
 
 		public static void main(String... args) {
@@ -580,32 +562,32 @@ public interface Blake2b {
 		/// Compression Kernel /////////////////////////////////////////// BEGIN
 		////////////////////////////////////////////////////////////////////////
 
-		/** address of allocated unsafe compression block */
-		final long block_addr = unsafe.allocateMemory(Spec.block_bytes);
+		/** unsafe access */
+		final static Unsafe unsafe;
+		/** array base offset of byte array */
+		final static long basexof;
+
+		static {
+			try {
+				Field f = Unsafe.class.getDeclaredField("theUnsafe");
+				f.setAccessible(true);
+				unsafe =  (Unsafe) f.get(null);
+
+				final byte[] foo = new byte[0];
+				basexof = unsafe.arrayBaseOffset(foo.getClass());
+			} catch (Exception e) {
+				e.printStackTrace(System.err);
+				throw new RuntimeException(e);
+			}
+		}
 
 		/** compress Spec.block_bytes data from b, from offset */
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
-			for(int i=0; i<Spec.block_bytes; i++) unsafe.putByte(block_addr+i, b[offset+i]);
-
+			// the unsafe copy will appropriately init m with little endian semantics.
 			final long[] m = state.m;
-			m[ 0] = unsafe.getLong(block_addr);
-			m[ 1] = unsafe.getLong(block_addr + 8);
-			m[ 2] = unsafe.getLong(block_addr + 16);
-			m[ 3] = unsafe.getLong(block_addr + 24);
-			m[ 4] = unsafe.getLong(block_addr + 32);
-			m[ 5] = unsafe.getLong(block_addr + 40);
-			m[ 6] = unsafe.getLong(block_addr + 48);
-			m[ 7] = unsafe.getLong(block_addr + 56);
-			m[ 8] = unsafe.getLong(block_addr + 64);
-			m[ 9] = unsafe.getLong(block_addr + 72);
-			m[10] = unsafe.getLong(block_addr + 80);
-			m[11] = unsafe.getLong(block_addr + 88);
-			m[12] = unsafe.getLong(block_addr + 96);
-			m[13] = unsafe.getLong(block_addr + 104);
-			m[14] = unsafe.getLong(block_addr + 112);
-			m[15] = unsafe.getLong(block_addr + 120);
+			unsafe.copyMemory(b, basexof+offset, m, basexof, Spec.block_bytes);
 
 			// set v registers
 			final   long[]  v = state.v;
