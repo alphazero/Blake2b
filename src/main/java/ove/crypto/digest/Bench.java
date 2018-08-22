@@ -29,44 +29,38 @@ import java.util.concurrent.TimeUnit;
 public class Bench implements Runnable {
 
 	interface Default {
-		int iterations = 100000;
-		int datalen = 4096;
+		int warmup = 3; // seconds
 		String digest = "blake2b-512";
 	}
 
 	static volatile boolean f_run = true;
 
 	static class Usage {
-		private static void explain (final String opt, final String details) {
-			System.out.format("%3s\t%s\n", opt, details);
+		private static void explain (final String opt, final String optfmt, Object ... args) {
+			final String fmtstr = String.format("%3s\t%s\n", opt, optfmt);
+			System.out.format(fmtstr, args);
 		}
 		static int usage () {
 			System.out.println("usage: java -cp .. ove.crypto.digest.Bench [options]");
 			System.out.println("[options]");
 			explain ("-d",  "digest algorithm to bench - one of " +
-					"{blake2-256, blake2-256, sha1, sha-256, sha-512, md5}. default: blake2b-512");
-			explain ("-i",  "number of iterations (digest function calls) per bench round. default: 100000");
-			explain ("-n",  "size of the digested buffer in bytes. default: 4096 / call");
+					"{blake2-256, blake2-256, sha1, sha-256, sha-512, md5}. default: %s", Default.digest);
+			explain ("-w",  "warm-up delay in seconds. default: %d seconds", Default.warmup);
 
 			return -1;
 		}
 	}
 
-	public static void main(final String... args) throws Exception{
+	public static void main(final String... args) {
 		final CmdLineArgs clargs = CmdLineArgs.parse(null, args);
 		if (clargs.isUsage()) {
 			System.exit(Usage.usage());
 		}
 		try {
-			String algorithm;
-			int iters;
-			int datalen;
+			String algorithm = clargs.getOption("d", Default.digest);
+			int warmup = clargs.getIntOption("w", Default.warmup);
 
-			algorithm = clargs.getOption("d", Default.digest);
-			iters = clargs.getIntOption("i", Default.iterations);
-			datalen = clargs.getIntOption("n", Default.datalen);
-
-			final Bench bench = new Bench (algorithm, iters, datalen);
+			final Bench bench = new Bench (algorithm, warmup);
 			final Thread brth = new Thread(bench, "bench-runner");
 			brth.start();
 			System.in.read();
@@ -79,17 +73,12 @@ public class Bench implements Runnable {
 	}
 
 	private final String algorithm;
-	private final int iters;
-	private final byte[] b;
+	private final int warmup;
 	private final Call call;
 
-	Bench (final String algorithm, final int iters, final int datalen) {
+	Bench (final String algorithm, final int warmup) {
 		this.algorithm = algorithm;
-		this.iters = iters;
-		this.b = new byte[datalen];
-		for(int i=0; i<b.length; i++) {
-			b[i] = (byte)i;
-		}
+		this.warmup = warmup;
 		this.call = getBenchedCall();
 	}
 
@@ -109,20 +98,71 @@ public class Bench implements Runnable {
 		System.out.format("%s\n", s);
 	}
 	@Override public void run () {
+
+		System.out.printf("warming up ...");
+		final long t0 = System.currentTimeMillis();
+		byte[] b0 = new byte[5000];
+		while (TimeUnit.MILLISECONDS.toSeconds(System.currentTimeMillis() - t0) < warmup) {
+			call.func(b0);
+		}
+		System.out.printf("\r");
+		b0 = null;
+		System.gc();
+
 		puts ("Bench - hit any key to stop. (use -h to list options)");
 		puts ("");
 		puts ("digest       | iterations | size (B/iter) | dt (nsec/iter) | throughput (MB/sec)");
-		while (f_run) {
-			final long start = System.nanoTime();
-			for(int i=0; i<iters; i++)
-				call.func(b);
-			final long delta = System.nanoTime() - start;
 
-			final long delta_us = TimeUnit.NANOSECONDS.toMicros(delta);
-			final double thrpt = ((double) b.length * iters) / delta_us;
-			System.out.format("%-12s | %10d | %13d | %14d |    %16.6f\r", algorithm, iters, b.length, delta/iters
-					, thrpt);
+		int size = 64;
+		int maxruns = 20;
+
+		while(size < 1 << 23) {
+			final double[] throughputs = new double[maxruns];
+			boolean adjusting = true;
+			int iters0 = 1;
+			byte[] b = new byte[size];
+			int run = 0;
+			while (f_run && run < maxruns) {
+				final long start = System.nanoTime();
+				for (int i = 0; i < iters0; i++)
+					call.func(b);
+				final long delta = System.nanoTime() - start;
+
+				final long delta_us = TimeUnit.NANOSECONDS.toMicros(delta);
+				final double throughput = ((double) b.length * iters0) / delta_us;
+				if (!adjusting) {
+					throughputs[run] = throughput;
+					run++;
+					System.out.format("%-12s | %10d | %13d | %14d |    %16.6f            \r",
+							algorithm, iters0, b.length, delta / iters0, average(throughputs, run));
+				} else {
+					System.out.format("%-12s | %10d | %13d | %14d |    %16.6f [adjusting]\r",
+							algorithm, iters0, b.length, delta / iters0, throughput);
+
+				}
+
+				// adjust iteration to get delta t in the second range (if necessary)
+				if (adjusting) {
+					if ((float) (TimeUnit.NANOSECONDS.toMillis(delta) / 1000.0) < 0.2) {
+						iters0 <<= 1;
+					} else {
+						adjusting = false;
+					}
+				}
+			}
+			size <<= 1;
+			if(f_run) System.out.println();
+			b = null;
+			System.gc();
 		}
+		System.exit(0);
+	}
+	final double average(double[] throughputs, int n) {
+		double sum = 0.0;
+		for(int i=0; i<n; i++) {
+			sum += throughputs[i];
+		}
+		return sum / (double) n;
 	}
 	interface Call {
 		byte[] func(final byte[] b);
