@@ -4,6 +4,8 @@ Blake2b is a [high performance](performance.md) Java implementation of the **BLA
 
 This implementation was made with close attention to the reference `C` implementation of **Samuel Neves** (<sneves@dei.uc.pt>). The quite excellent [`Go` implementation](github.com/dchest/blake2b) by **Dmitry Chestnykh** was also reviewed and referenced for optimization inspirations.
 
+![plot](benchmarks/unsafe.png)
+
 ## Fidelity
 This implementation is provided with a suite of tests miminally covering the reference implementation `KAT` and `Keyed-KAT`, covering basic digest and MAC features (respectively). These may be inspected in the `src/test/` source fork of this repository.
 
