@@ -1,8 +1,12 @@
 # About
-Blake2b is a high performance Java implementation of the **BLAKE2b** cryptographic hash function created by **Jean-Philippe Aumasson**, **Samuel Neves**, **Zooko Wilcox-O'Hearn**, and
+Blake2b is a [high performance](performance.md) Java implementation of the **BLAKE2b** cryptographic hash function created by **Jean-Philippe Aumasson**, **Samuel Neves**, **Zooko Wilcox-O'Hearn**, and
 **Christian Winnerlein**. (See [Blake2 project site](https://blake2.net) for details and authoritative information about the BLAKE2b digest.)
 
 This implementation was made with close attention to the reference `C` implementation of **Samuel Neves** (<sneves@dei.uc.pt>). The quite excellent [`Go` implementation](github.com/dchest/blake2b) by **Dmitry Chestnykh** was also reviewed and referenced for optimization inspirations.
+
+This library is provided in 2 pure Java variants (`master` and `unsafe` branches). See the [performance](performance.md) document for details.
+
+![plot](benchmarks/unsafe.png)
 
 ## Fidelity
 This implementation is provided with a suite of tests miminally covering the reference implementation `KAT` and `Keyed-KAT`, covering basic digest and MAC features (respectively). These may be inspected in the `src/test/` source fork of this repository.
@@ -203,57 +207,10 @@ The `Blake2b.Tree` class provides a convenient semantic `API` for incremental ha
     digest.update (hash_02);
     final byte[] hash = digest.digest();
 
-# Performance
-
-The `Blake2B` hash was designed to be faster than `MD5`, however that design goal, in my opinion, can not be met in a pure
-Java implementation.
-
-The `Blake2B` kernel operates on 8 `byte` machine words mapped from the message byte array with
-`little endian` semantics. In a language like `C`, this conversion is a simple matter of casting a pointer. In `Java`,
-the same conversion is a more elaborate affair. Besides the fact that one can not simply cast from `byte[]` to `long`,
-the fact that the `JVM` does not support `unsigned integer` data types necessitates 5 extra masking operations for each
-such mapping to deal with the sign issue. Given that each call to `compress()` requires mapping 128 bytes to 16 long words,
-that translates to **80** `& 0xFF` masking ops per 128 byte block that was not envisioned in the original design for this
-function. (A no-op version of `readLong` for this same codebase that emulates the performance of equivalent `C` by simply
-returning the first byte, for example, clocks at `314 b/usec` -- thus exceeding `md5` performance on the same machine, vs
-the `266 b/usec` of the actual working version which lags behind the `md5`.)
-
-Yet another consideration is the fact that a pure Java implementation can not (directly) utilize `simd` features of the
-hardware. So that also leaves performance gains in x2 to x3 range on the table.
-
-That said, the best performance numbers for non-Java `Blake2B` implementations speak of processing roughly `3 bytes per
-cpu cycle`. This pure Java implementation achieves roughly `0.3 bytes per cpu cycle` which is rather decent given the
-above consideration, and likely close to the the performance ceiling for a pure Java implementation.
-
-## Relative benchmark results
-
-Using the (provided) `ove.crypto.digest.Bench` utility class, on an `MacBook Air (OS X 10.13.14)` with `1.3 GHz Intel Core i5`
-with `Java HotSpot(TM) 64-Bit Server VM (build 25.181-b13, mixed mode)` these are the relative performance numbers.
-These number hold fairly well regardless of the message size.
-
-    digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
-    md5      |     100000 |          4096 |          14082 |          290.864263
-
-    digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
-    blake2b  |     100000 |          4096 |          15376 |          266.385713
-
-    digest   | iterations | size (b/iter) | dt (nsec/iter) | throughput (b/usec)
-    sha1     |     100000 |          4096 |          21168 |          193.499622
-
-To run the bench, try
-
-    java -cp target/ove.blake2b-alpha.0.jar ove.crypto.digest.Bench -n <message size> -i <iterations> -d <digest>
-
-for example:
-
-    java -cp target/ove.blake2b-alpha.0.jar ove.crypto.digest.Bench -n 4096 -i 100000 -d blake2b
-
-## Further possible optimizations
-
-Open to suggestions.
-
 # Dedication
-To the Eternal Absolute, The One, ~!!! Ahura-Mazda !!!~ *even* ~!!! Al-Aziz-Al-Hakim !!!~, The Lord of Sentient Realms, The True in Love. The Friend.
+    To the Eternal Absolute, The One, ~!!! Ahura-Mazda !!!~ *even* ~!!! Al-Aziz-Al-Hakim !!!~, 
+    The Lord of Sentient Realms, The True in Love. 
+    The Friend.
 
 --
 
