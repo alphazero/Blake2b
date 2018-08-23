@@ -5,7 +5,7 @@ The standard pure Java version (`master` branch) is highly optimizied but the co
 substantially better than other pure Java libraries.
 
 The `unsafe` version (`unsafe` branch) addresses this bottleneck and achieves ~ `4.1 byte/cycle` on a fairly dated `i5 1.3 MHz` 
-MacBook Air. (This compares rather favorably with the `3.08 bytes/cycle` noted on the official [Blake2b](https://blake2.net/) 
+MacBook Air. This compares rather favorably with the `3.08 bytes/cycle` noted on the official [Blake2b](https://blake2.net/) 
 site. To close that gap would likely require use of `SIMD` operations which can not (afaik) be done in pure Java. (`unsafe` is 
 only used to efficiently convert the compress'd block `byte[]` to `long[]`. No non-JVM-managed memory operations are performed, so 
 this should be your choice if you are OK with use of the use `unsafe` package.)
