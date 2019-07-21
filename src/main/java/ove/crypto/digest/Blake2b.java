@@ -23,7 +23,10 @@ import sun.misc.Unsafe;
 
 import java.io.PrintStream;
 import java.io.Serializable;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.nio.ByteOrder;
 import java.security.Key;
 import java.security.spec.AlgorithmParameterSpec; // JCE not supported / anticipated ..
 import java.util.Arrays;
@@ -562,32 +565,30 @@ public interface Blake2b {
 		/// Compression Kernel /////////////////////////////////////////// BEGIN
 		////////////////////////////////////////////////////////////////////////
 
-		/** unsafe access */
-		final static Unsafe unsafe;
-		/** array base offset of byte array */
-		final static long basexof;
+		final static VarHandle longView;
 
 		static {
 			try {
-				Field f = Unsafe.class.getDeclaredField("theUnsafe");
-				f.setAccessible(true);
-				unsafe =  (Unsafe) f.get(null);
-
-				final byte[] foo = new byte[0];
-				basexof = unsafe.arrayBaseOffset(foo.getClass());
+				longView = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
 			} catch (Exception e) {
 				e.printStackTrace(System.err);
 				throw new RuntimeException(e);
 			}
 		}
 
+		static long[] copyMemory(byte[] src, long[] dst) {
+			for(int i = 0; i < 16; i++) {
+				dst[i] = (long) longView.get(src, i*8);
+			}
+			return dst;
+		}
+
 		/** compress Spec.block_bytes data from b, from offset */
 		private void compress (final byte[] b, final int offset) {
 
 			// set m registers
-			// the unsafe copy will appropriately init m with little endian semantics.
-			final long[] m = state.m;
-			unsafe.copyMemory(b, basexof+offset, m, basexof, Spec.block_bytes);
+			// the copy will init m with little endian semantics.
+			final long[] m = copyMemory(b, state.m);
 
 			// set v registers
 			final   long[]  v = state.v;
