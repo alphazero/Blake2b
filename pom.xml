@@ -33,8 +33,8 @@
 
 	<properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <compiler.source>1.6</compiler.source>
-        <compiler.target>1.6</compiler.target>
+        <compiler.source>9</compiler.source>
+        <compiler.target>9</compiler.target>
         <testng.version>6.3.1</testng.version>
         <maven-compiler-plugin.version>3.0</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>2.12</maven-surefire-plugin.version>
