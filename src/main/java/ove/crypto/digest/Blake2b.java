@@ -576,9 +576,9 @@ public interface Blake2b {
 			}
 		}
 
-		static long[] copyMemory(byte[] src, long[] dst) {
+		static long[] copyMemory(byte[] src, long[] dst, int offset) {
 			for(int i = 0; i < 16; i++) {
-				dst[i] = (long) longView.get(src, i*8);
+				dst[i] = (long) longView.get(src, offset + i*8);
 			}
 			return dst;
 		}
@@ -588,7 +588,7 @@ public interface Blake2b {
 
 			// set m registers
 			// the copy will init m with little endian semantics.
-			final long[] m = copyMemory(b, state.m);
+			final long[] m = copyMemory(b, state.m, offset);
 
 			// set v registers
 			final   long[]  v = state.v;
