@@ -4,7 +4,7 @@ Blake2b is a [high performance](performance.md) Java implementation of the **BLA
 
 This implementation was made with close attention to the reference `C` implementation of **Samuel Neves** (<sneves@dei.uc.pt>). The quite excellent [`Go` implementation](github.com/dchest/blake2b) by **Dmitry Chestnykh** was also reviewed and referenced for optimization inspirations.
 
-This library is provided in 2 pure Java variants (`master` and `unsafe` branches). See the [performance](performance.md) document for details.
+This library is provided in 3 pure Java variants (`master`, `unsafe`, and `varhandles` branches). See the [performance](performance.md) document for details. (Note: `varhandles` and `unsafe` have equivalent performance.)
 
 ![plot](benchmarks/unsafe.png)
 
