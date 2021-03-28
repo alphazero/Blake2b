@@ -23,6 +23,7 @@ import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.*;
+import java.util.Random;
 
 import static ove.test.Utils.*;
 import static ove.crypto.digest.Blake2BTestUtils.*;
@@ -98,5 +99,30 @@ abstract public class TestDigestAbstractBase extends Blake2bTestsBase {
 		// check
 		byte[] testBytes = baos.toByteArray();
 		Assert.assertEquals ( testBytes, refbytes, "does not match reference KAT");
+	}
+
+	/**
+	 * Verify that {@link Blake2b.Digest#update(byte[], int, int)} behaves the same whether the data is at offset 0 or
+	 * a non-zero offset.
+	 */
+	@Test(suiteName = "blake2b")
+	public void testUpdateWithNonZeroOffset()  {
+		logit (this, "testUpdateWithNonZeroOffset");
+		Random random = new Random();
+		byte[] bytesToHash = new byte[1024];
+		random.nextBytes(bytesToHash);
+
+		byte[] bytesWithOffset = new byte[1030];
+		System.arraycopy(bytesToHash, 0, bytesWithOffset, 6, bytesToHash.length);
+
+		Blake2b digest = newMessageDigest();
+		digest.update(bytesToHash, 0, bytesToHash.length);
+		byte[] zeroOffsetHash = digest.digest();
+
+		digest.reset();
+		digest.update(bytesWithOffset, 6, bytesToHash.length);
+		byte[] positiveOffsetHash = digest.digest();
+
+		Assert.assertEquals(positiveOffsetHash, zeroOffsetHash);
 	}
 }
